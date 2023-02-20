@@ -1,0 +1,15 @@
+<configuration>
+    <input>
+        <net-file value="intersection.net.xml"/>
+        <route-files value="intersection.rou.xml"/>
+        <additional-files value="router.xml"/>
+    </input>
+    <process>
+        <routing-algorithm value="astar"/>
+        <device.rerouting.probability value="1"/>
+        <device.rerouting.period value="1"/>
+    </process>
+	<processing>
+		<lateral-resolution value="0.1"/>
+	</processing>
+</configuration>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2022-12-08 13:20:51 by Eclipse SUMO GUI Version v1_15_0+0719-b14a25c54bb
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="intersection.net.xml"/>
+        <route-files value="intersection.rou.xml"/>
+    </input>
+
+    <output>
+        <tripinfo-output value="tripinfo.xml"/>
+    </output>
+
+    <processing>
+        <lateral-resolution value="0.1"/>
+    </processing>
+
+    <report>
+        <log value="logfileNoAdaptation.txt"/>
+        <duration-log.statistics value="true"/>
+    </report>
+
+    <traci_server>
+        <remote-port value="55394"/>
+    </traci_server>
+
+</configuration>
+-->
+
+<tripinfos xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/tripinfo_file.xsd">
+    <tripinfo id="f_2.0" depart="0.00" departLane="E0_2" departPos="5.10" departPosLat="0.00" departSpeed="0.00" departDelay="0.00" arrival="23.00" arrivalLane="E2_2" arrivalPos="100.00" arrivalPosLat="-0.70" arrivalSpeed="13.98" duration="23.00" routeLength="230.69" waitingTime="0.00" waitingCount="0" stopTime="0.00" timeLoss="5.80" rerouteNo="1" devices="tripinfo_f_2.0 routing_f_2.0" vType="DEFAULT_VEHTYPE" speedFactor="1.01" vaporized=""/>
+</tripinfos>

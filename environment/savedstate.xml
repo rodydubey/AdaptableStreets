@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2023-02-20 15:13:59 by Eclipse SUMO GUI Version 1.15.0
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="environment/intersection2.net.xml"/>
+        <route-files value="environment/intersection_Slot_17.rou.xml"/>
+        <additional-files value="C:/D/SUMO/MARL/multiagentRL/gym_sumo/envs/sumo_configs/router.xml"/>
+    </input>
+
+    <output>
+        <statistic-output value="output.xml"/>
+    </output>
+
+    <processing>
+        <lateral-resolution value="0.1"/>
+        <ignore-route-errors value="true"/>
+        <collision.check-junctions value="True"/>
+        <time-to-teleport.disconnected value="1"/>
+        <default.carfollowmodel value="IDM"/>
+        <pedestrian.striping.dawdling value="0.5"/>
+    </processing>
+
+    <routing>
+        <routing-algorithm value="astar"/>
+        <device.rerouting.probability value="1"/>
+        <device.rerouting.period value="1"/>
+    </routing>
+
+    <report>
+        <no-warnings value="true"/>
+        <no-step-log value="true"/>
+    </report>
+
+    <random_number>
+        <random value="true"/>
+    </random_number>
+
+    <gui_only>
+        <start value="true"/>
+    </gui_only>
+
+</configuration>
+-->
+
+<snapshot xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/state_file.xsd" version="1.15.0" time="3011.00" type="micro">
+    <route id="!f_0" state="1" edges="E0 E2"/>
+    <route id="!f_1" state="1" edges="E0 E2"/>
+    <route id="!f_2" state="1" edges="E0 E2"/>
+    <delay number="79" begin="1795" end="1716" depart="1592.00" time="214547.00"/>
+    <vType id="DEFAULT_BIKETYPE" vClass="bicycle"/>
+    <vType id="DEFAULT_PEDTYPE" vClass="pedestrian"/>
+    <vType id="DEFAULT_VEHTYPE"/>
+    <vehicle id="f_0.441" type="DEFAULT_PEDTYPE" depart="2800.30" color="magenta" route="!f_0" distance="128.78 0" speedFactor="0.8947" reroute="1" state="264355 2801000 1 0.32 0 45.38 3010000 0 0" pos="74.85 74.64 1.23" speed="1.23 1.23" angle="89.37" posLat="0.00" waitingTime="100000 1 86000 126000">
+        <device id="routing_f_0.441" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.442" type="DEFAULT_PEDTYPE" depart="2806.65" color="magenta" route="!f_0" distance="128.78 0" speedFactor="0.8369" reroute="1" state="264355 2807000 1 0.32 0 36.50 3010000 0 0" pos="65.06 64.85 1.15" speed="1.15 1.15" angle="89.37" posLat="0.00" waitingTime="100000 1 85000 115000">
+        <device id="routing_f_0.442" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.443" type="DEFAULT_PEDTYPE" depart="2813.00" color="magenta" route="!f_0" distance="128.78 0" speedFactor="1.0968" reroute="1" state="264355 2813000 1 0.32 0 56.76 3010000 0 0" pos="85.17 84.96 1.37" speed="1.37 1.37" angle="89.37" posLat="0.00" waitingTime="100000 1 85000 112000">
+        <device id="routing_f_0.443" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.444" type="DEFAULT_PEDTYPE" depart="2819.35" color="magenta" route="!f_0" distance="128.78 0" speedFactor="0.8961" reroute="1" state="264355 2820000 1 0.32 0 37.51 3010000 0 0" pos="61.32 61.11 1.19" speed="1.19 1.19" angle="89.37" posLat="0.00" waitingTime="100000 5 53000 55000 75000 76000 77000 79000 82000 83000 86000 104000">
+        <device id="routing_f_0.444" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.445" type="DEFAULT_PEDTYPE" depart="2825.70" color="magenta" route="!f_0" distance="128.78 0" speedFactor="0.8643" reroute="1" state="264355 2826000 1 0.32 0 22.82 3010000 0 0" pos="65.01 64.80 1.20" speed="1.20 1.20" angle="89.37" posLat="0.00" waitingTime="100000 2 80000 81000 84000 101000">
+        <device id="routing_f_0.445" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.446" type="DEFAULT_PEDTYPE" depart="2832.05" color="magenta" route="!f_0" distance="128.78 0" speedFactor="0.9866" reroute="1" state="264355 2833000 1 0.32 0 18.92 3010000 0 0" pos="88.15 87.93 1.37" speed="1.37 1.37" angle="89.37" posLat="0.00" waitingTime="100000 3 86000 90000 92000 93000 96000 99000">
+        <device id="routing_f_0.446" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.447" type="DEFAULT_PEDTYPE" depart="2838.40" color="magenta" route="!f_0" distance="128.78 0" speedFactor="0.9122" reroute="1" state="264355 2839000 1 0.32 0 13.30 3010000 0 0" pos="71.33 71.12 1.20" speed="1.20 1.20" angle="89.37" posLat="0.00" waitingTime="100000 1 85000 89000">
+        <device id="routing_f_0.447" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.448" type="DEFAULT_PEDTYPE" depart="2844.75" color="magenta" route="!f_0" distance="128.78 0" speedFactor="1.0934" reroute="1" state="264355 2845000 1 0.32 0 26.30 3010000 0 0" pos="82.17 81.96 1.37" speed="1.37 1.37" angle="89.37" posLat="0.00" waitingTime="100000 1 84000 91000">
+        <device id="routing_f_0.448" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.449" type="DEFAULT_PEDTYPE" depart="2851.10" color="magenta" route="!f_0" distance="128.78 0" speedFactor="0.8455" reroute="1" state="264355 2852000 1 0.32 0 1.66 3010000 0 0" pos="55.13 54.91 1.16" speed="1.16 1.16" angle="89.37" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.449" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.450" type="DEFAULT_PEDTYPE" depart="2857.45" color="magenta" route="!f_0" distance="128.78 0" speedFactor="1.1087" reroute="1" state="264355 2858000 1 0.32 0 29.88 3010000 0 0" pos="59.58 59.37 1.15" speed="1.15 1.15" angle="89.37" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.450" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.451" type="DEFAULT_PEDTYPE" depart="2863.80" color="magenta" route="!f_0" distance="128.78 0" speedFactor="1.0423" reroute="1" state="264355 2864000 1 0.32 0 20.19 3010000 0 0" pos="53.67 53.45 1.17" speed="1.17 1.17" angle="89.37" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.451" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.452" type="DEFAULT_PEDTYPE" depart="2870.15" color="magenta" route="!f_0" distance="128.78 0" speedFactor="1.0070" reroute="1" state="264355 2871000 1 0.32 0 10.41 3010000 0 0" pos="51.38 51.17 1.19" speed="1.19 1.19" angle="89.37" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.452" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.453" type="DEFAULT_PEDTYPE" depart="2876.50" color="magenta" route="!f_0" distance="128.78 0" speedFactor="0.9719" reroute="1" state="264355 2877000 1 0.32 0 4.03 3010000 0 0" pos="45.62 45.41 1.34" speed="1.34 1.34" angle="89.37" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.453" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.454" type="DEFAULT_PEDTYPE" depart="2882.85" color="magenta" route="!f_0" distance="0 0" speedFactor="0.8793" reroute="1" state="264355 2883000 0 0.32 42000 46.04 3010000 0 0" pos="99.19 98.98 0.00" speed="0.00 0.00" angle="90.52" posLat="-1.13" waitingTime="100000 2 0 42000 44000 45000">
+        <device id="routing_f_0.454" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.455" type="DEFAULT_PEDTYPE" depart="2889.20" color="magenta" route="!f_0" distance="0 0" speedFactor="0.9460" reroute="1" state="264355 2890000 0 0.32 39000 44.76 3010000 0 0" pos="99.18 98.96 0.00" speed="0.00 0.00" angle="90.52" posLat="-0.19" waitingTime="100000 2 0 39000 41000 42000">
+        <device id="routing_f_0.455" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.456" type="DEFAULT_PEDTYPE" depart="2895.55" color="magenta" route="!f_0" distance="0 0" speedFactor="1.0000" reroute="1" state="264355 2896000 0 0.32 37000 42.84 3010000 0 0" pos="99.15 98.93 0.00" speed="0.00 0.00" angle="90.52" posLat="1.67" waitingTime="100000 2 0 37000 39000 40000">
+        <device id="routing_f_0.456" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.457" type="DEFAULT_PEDTYPE" depart="2901.90" color="magenta" route="!f_0" distance="0 0" speedFactor="0.9931" reroute="1" state="264355 2902000 0 0.32 31000 36.32 3010000 0 0" pos="99.18 98.96 0.00" speed="0.00 0.00" angle="90.52" posLat="3.55" waitingTime="100000 2 0 31000 33000 34000">
+        <device id="routing_f_0.457" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.458" type="DEFAULT_PEDTYPE" depart="2908.25" color="magenta" route="!f_0" distance="0 0" speedFactor="1.0593" reroute="1" state="264355 2909000 0 0.32 28000 33.80 3010000 0 0" pos="99.18 98.96 0.00" speed="0.00 0.00" angle="90.52" posLat="0.76" waitingTime="100000 2 0 28000 30000 31000">
+        <device id="routing_f_0.458" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.459" type="DEFAULT_PEDTYPE" depart="2914.60" color="magenta" route="!f_0" distance="0 0" speedFactor="0.9701" reroute="1" state="264355 2915000 0 0.32 17000 21.62 3010000 0 0" pos="99.18 98.96 0.00" speed="0.00 0.00" angle="90.52" posLat="2.57" waitingTime="100000 2 0 17000 19000 20000">
+        <device id="routing_f_0.459" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.460" type="DEFAULT_PEDTYPE" depart="2920.95" color="magenta" route="!f_0" distance="0 0" speedFactor="0.9514" reroute="1" state="264355 2921000 0 0.32 11000 14.74 3010000 0 0" pos="98.44 98.23 0.00" speed="0.00 0.00" angle="90.52" posLat="0.66" waitingTime="100000 1 0 11000">
+        <device id="routing_f_0.460" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.461" type="DEFAULT_PEDTYPE" depart="2927.30" color="magenta" route="!f_0" distance="0 0" speedFactor="0.9215" reroute="1" state="264355 2928000 0 0.32 1000 5.74 3010000 0 0" pos="97.91 97.70 0.00" speed="0.00 0.24" angle="90.52" posLat="1.86" waitingTime="100000 1 0 1000">
+        <device id="routing_f_0.461" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.462" type="DEFAULT_PEDTYPE" depart="2933.65" color="magenta" route="!f_0" distance="0 0" speedFactor="1.0131" reroute="1" state="264355 2934000 0 0.32 3000 6.29 3010000 0 0" pos="98.41 98.19 0.04" speed="0.04 0.00" angle="90.52" posLat="1.76" waitingTime="100000 1 0 3000">
+        <device id="routing_f_0.462" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.463" type="DEFAULT_PEDTYPE" depart="2940.00" color="magenta" route="!f_0" distance="0 0" speedFactor="0.9857" reroute="1" state="264355 2940000 0 0.32 0 1.08 3010000 0 0" pos="94.67 94.46 1.26" speed="1.26 1.21" angle="90.52" posLat="2.00" waitingTime="100000 0">
+        <device id="routing_f_0.463" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.464" type="DEFAULT_PEDTYPE" depart="2946.35" color="magenta" route="!f_0" distance="0 0" speedFactor="0.9573" reroute="1" state="264355 2947000 0 0.32 0 0.39 3010000 0 0" pos="83.56 83.34 1.32" speed="1.32 1.32" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.464" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.465" type="DEFAULT_PEDTYPE" depart="2952.70" color="magenta" route="!f_0" distance="0 0" speedFactor="1.0653" reroute="1" state="264355 2953000 0 0.32 0 2.77 3010000 0 0" pos="80.55 80.33 1.34" speed="1.34 1.34" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.465" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.466" type="DEFAULT_PEDTYPE" depart="2959.05" color="magenta" route="!f_0" distance="0 0" speedFactor="0.9378" reroute="1" state="264355 2960000 0 0.32 0 0.19 3010000 0 0" pos="65.19 64.97 1.30" speed="1.30 1.30" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.466" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.467" type="DEFAULT_PEDTYPE" depart="2965.40" color="magenta" route="!f_0" distance="0 0" speedFactor="1.0319" reroute="1" state="264355 2966000 0 0.32 0 1.38 3010000 0 0" pos="61.40 61.19 1.35" speed="1.35 1.36" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.467" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.468" type="DEFAULT_PEDTYPE" depart="2971.75" color="magenta" route="!f_0" distance="0 0" speedFactor="1.0706" reroute="1" state="264355 2972000 0 0.32 0 4.23 3010000 0 0" pos="50.53 50.32 1.34" speed="1.34 1.34" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.468" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.469" type="DEFAULT_PEDTYPE" depart="2978.10" color="magenta" route="!f_0" distance="0 0" speedFactor="0.7914" reroute="1" state="264355 2979000 0 0.32 0 0.09 3010000 0 0" pos="34.29 34.08 1.10" speed="1.10 1.10" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.469" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.470" type="DEFAULT_PEDTYPE" depart="2984.45" color="magenta" route="!f_0" distance="0 0" speedFactor="1.0272" reroute="1" state="264355 2985000 0 0.32 0 2.57 3010000 0 0" pos="32.32 32.10 1.12" speed="1.12 1.13" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.470" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.471" type="DEFAULT_PEDTYPE" depart="2990.80" color="magenta" route="!f_0" distance="0 0" speedFactor="1.0348" reroute="1" state="264355 2991000 0 0.32 0 1.66 3010000 0 0" pos="25.23 25.02 1.31" speed="1.31 1.32" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.471" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.472" type="DEFAULT_PEDTYPE" depart="2997.15" color="magenta" route="!f_0" distance="0 0" speedFactor="1.0286" reroute="1" state="264355 2998000 0 0.32 0 0.19 3010000 0 0" pos="17.19 16.98 1.41" speed="1.41 1.41" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.472" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.473" type="DEFAULT_PEDTYPE" depart="3003.50" color="magenta" route="!f_0" distance="0 0" speedFactor="1.1094" reroute="1" state="264355 3004000 0 0.32 0 0.18 3010000 0 0" pos="9.28 9.07 1.52" speed="1.52 1.52" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.473" state="1000"/>
+    </vehicle>
+    <vehicle id="f_0.474" type="DEFAULT_PEDTYPE" depart="3009.85" color="magenta" route="!f_0" distance="0 0" speedFactor="0.7401" reroute="1" state="264355 3010000 0 0.32 0 0.00 3011000 0 0" pos="0.32 0.10 0.00" speed="0.00 0.00" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_0.474" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.761" type="DEFAULT_BIKETYPE" depart="2800.56" color="blue" route="!f_1" distance="128.78 0" speedFactor="1.0126" reroute="1" state="264355 2803000 1 1.70 0 84.32 3010000 0 0" pos="59.25 57.65 1.15" speed="1.15 1.15" angle="89.37" posLat="-0.78" waitingTime="100000 5 47000 49000 51000 52000 64000 66000 80000 84000 86000 120000">
+        <device id="routing_f_1.761" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.768" type="DEFAULT_BIKETYPE" depart="2826.32" color="blue" route="!f_1" distance="128.78 0" speedFactor="1.0198" reroute="1" state="264355 2828000 1 1.70 0 57.83 3010000 0 0" pos="62.86 61.26 1.15" speed="1.15 1.15" angle="89.37" posLat="-0.42" waitingTime="100000 3 76000 77000 83000 84000 88000 107000">
+        <device id="routing_f_1.768" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.776" type="DEFAULT_BIKETYPE" depart="2855.76" color="blue" route="!f_1" distance="128.78 0" speedFactor="0.9369" reroute="1" state="264355 2856000 1 1.70 0 22.93 3010000 0 0" pos="57.13 55.53 1.15" speed="1.15 1.16" angle="89.37" posLat="0.48" waitingTime="100000 0">
+        <device id="routing_f_1.776" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.779" type="DEFAULT_BIKETYPE" depart="2866.80" color="blue" route="!f_1" distance="128.78 0" speedFactor="0.9106" reroute="1" state="264355 2867000 1 1.70 0 16.49 3010000 0 0" pos="45.72 44.12 1.32" speed="1.32 1.33" angle="89.37" posLat="-0.42" waitingTime="100000 2 36000 39000 45000 47000">
+        <device id="routing_f_1.779" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.784" type="DEFAULT_BIKETYPE" depart="2885.20" color="blue" route="!f_1" distance="0 0" speedFactor="0.8705" reroute="1" state="264355 2886000 0 1.70 43000 49.37 3010000 0 0" pos="99.15 97.55 0.00" speed="0.00 0.00" angle="90.52" posLat="-3.46" waitingTime="100000 3 0 43000 45000 46000 47000 48000">
+        <device id="routing_f_1.784" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.786" type="DEFAULT_BIKETYPE" depart="2892.56" color="blue" route="!f_1" distance="0 0" speedFactor="1.0300" reroute="1" state="264355 2893000 0 1.70 42000 55.28 3010000 0 0" pos="97.05 95.45 0.00" speed="0.00 0.00" angle="90.52" posLat="-3.46" waitingTime="100000 2 0 42000 44000 45000">
+        <device id="routing_f_1.786" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.787" type="DEFAULT_BIKETYPE" depart="2896.24" color="blue" route="!f_1" distance="0 0" speedFactor="1.0741" reroute="1" state="264355 2898000 0 1.70 29000 51.61 3010000 0 0" pos="99.00 97.40 0.00" speed="0.00 0.00" angle="90.52" posLat="-1.83" waitingTime="100000 3 0 29000 30000 31000 37000 41000">
+        <device id="routing_f_1.787" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.789" type="DEFAULT_BIKETYPE" depart="2903.60" color="blue" route="!f_1" distance="0 0" speedFactor="1.0369" reroute="1" state="264355 2904000 0 1.70 35000 43.36 3010000 0 0" pos="99.13 97.53 0.00" speed="0.00 0.00" angle="90.52" posLat="-2.64" waitingTime="100000 2 0 35000 37000 38000">
+        <device id="routing_f_1.789" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.790" type="DEFAULT_BIKETYPE" depart="2907.28" color="blue" route="!f_1" distance="0 0" speedFactor="1.1870" reroute="1" state="264355 2908000 0 1.70 33000 49.62 3010000 0 0" pos="94.95 93.35 0.00" speed="0.00 0.00" angle="90.52" posLat="-3.46" waitingTime="100000 2 0 33000 37000 38000">
+        <device id="routing_f_1.790" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.791" type="DEFAULT_BIKETYPE" depart="2910.96" color="blue" route="!f_1" distance="0 0" speedFactor="1.0618" reroute="1" state="264355 2911000 0 1.70 26000 39.14 3010000 0 0" pos="97.03 95.43 0.00" speed="0.00 0.00" angle="90.52" posLat="-2.64" waitingTime="100000 1 0 26000">
+        <device id="routing_f_1.791" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.792" type="DEFAULT_BIKETYPE" depart="2914.64" color="blue" route="!f_1" distance="0 0" speedFactor="1.1380" reroute="1" state="264355 2917000 0 1.70 19000 36.31 3010000 0 0" pos="98.46 96.86 0.00" speed="0.00 0.00" angle="90.52" posLat="-0.58" waitingTime="100000 3 0 19000 23000 28000 29000 30000">
+        <device id="routing_f_1.792" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.793" type="DEFAULT_BIKETYPE" depart="2918.32" color="blue" route="!f_1" distance="0 0" speedFactor="0.9467" reroute="1" state="264355 2919000 0 1.70 10000 23.38 3010000 0 0" pos="97.73 96.13 0.00" speed="0.00 0.00" angle="90.52" posLat="0.67" waitingTime="100000 2 0 10000 14000 18000">
+        <device id="routing_f_1.793" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.794" type="DEFAULT_BIKETYPE" depart="2922.00" color="blue" route="!f_1" distance="0 0" speedFactor="1.0481" reroute="1" state="264355 2923000 0 1.70 16000 26.45 3010000 0 0" pos="96.90 95.30 0.00" speed="0.00 0.00" angle="90.52" posLat="-1.63" waitingTime="100000 1 0 16000">
+        <device id="routing_f_1.794" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.795" type="DEFAULT_BIKETYPE" depart="2925.68" color="blue" route="!f_1" distance="0 0" speedFactor="1.0104" reroute="1" state="264355 2926000 0 1.70 14000 22.48 3010000 0 0" pos="94.93 93.33 0.00" speed="0.00 0.00" angle="90.52" posLat="-2.54" waitingTime="100000 1 0 14000">
+        <device id="routing_f_1.795" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.796" type="DEFAULT_BIKETYPE" depart="2929.36" color="blue" route="!f_1" distance="0 0" speedFactor="1.0191" reroute="1" state="264355 2930000 0 1.70 12000 20.37 3010000 0 0" pos="92.85 91.25 0.00" speed="0.00 0.00" angle="90.52" posLat="-3.46" waitingTime="100000 1 0 12000">
+        <device id="routing_f_1.796" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.797" type="DEFAULT_BIKETYPE" depart="2933.04" color="blue" route="!f_1" distance="0 0" speedFactor="0.9996" reroute="1" state="264355 2936000 0 1.70 9000 14.61 3010000 0 0" pos="90.75 89.15 0.00" speed="0.00 0.00" angle="90.52" posLat="-3.46" waitingTime="100000 1 0 9000">
+        <device id="routing_f_1.797" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.798" type="DEFAULT_BIKETYPE" depart="2936.72" color="blue" route="!f_1" distance="0 0" speedFactor="0.9864" reroute="1" state="264355 2937000 0 1.70 5000 9.03 3010000 0 0" pos="96.35 94.75 0.01" speed="0.01 0.01" angle="90.52" posLat="-0.48" waitingTime="100000 1 0 5000">
+        <device id="routing_f_1.798" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.799" type="DEFAULT_BIKETYPE" depart="2940.40" color="blue" route="!f_1" distance="0 0" speedFactor="1.0293" reroute="1" state="264355 2942000 0 1.70 1000 7.75 3010000 0 0" pos="94.72 93.12 0.06" speed="0.06 0.10" angle="99.99" posLat="-1.53" waitingTime="100000 1 0 1000">
+        <device id="routing_f_1.799" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.800" type="DEFAULT_BIKETYPE" depart="2944.08" color="blue" route="!f_1" distance="0 0" speedFactor="1.0820" reroute="1" state="264355 2945000 0 1.70 0 9.21 3010000 0 0" pos="92.25 90.65 0.48" speed="0.48 0.91" angle="90.52" posLat="-2.46" waitingTime="100000 0">
+        <device id="routing_f_1.800" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.801" type="DEFAULT_BIKETYPE" depart="2947.76" color="blue" route="!f_1" distance="0 0" speedFactor="0.9348" reroute="1" state="264355 2949000 0 1.70 0 2.42 3010000 0 0" pos="83.84 82.24 1.34" speed="1.34 1.36" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.801" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.802" type="DEFAULT_BIKETYPE" depart="2951.44" color="blue" route="!f_1" distance="0 0" speedFactor="1.0224" reroute="1" state="264355 2952000 0 1.70 0 1.20 3010000 0 0" pos="88.81 87.21 1.22" speed="1.22 1.35" angle="70.99" posLat="-1.46" waitingTime="100000 0">
+        <device id="routing_f_1.802" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.803" type="DEFAULT_BIKETYPE" depart="2955.12" color="blue" route="!f_1" distance="0 0" speedFactor="1.0810" reroute="1" state="264355 2956000 0 1.70 0 5.86 3010000 0 0" pos="79.76 78.16 1.33" speed="1.33 1.32" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.803" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.804" type="DEFAULT_BIKETYPE" depart="2958.80" color="blue" route="!f_1" distance="0 0" speedFactor="0.8938" reroute="1" state="264355 2959000 0 1.70 0 0.99 3010000 0 0" pos="68.75 67.15 1.33" speed="1.33 1.33" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.804" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.805" type="DEFAULT_BIKETYPE" depart="2962.48" color="blue" route="!f_1" distance="0 0" speedFactor="1.0461" reroute="1" state="264355 2963000 0 1.70 0 6.96 3010000 0 0" pos="64.53 62.93 1.33" speed="1.33 1.33" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.805" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.806" type="DEFAULT_BIKETYPE" depart="2966.16" color="blue" route="!f_1" distance="0 0" speedFactor="0.8265" reroute="1" state="264355 2968000 0 1.70 0 0.91 3010000 0 0" pos="52.64 51.04 1.23" speed="1.23 1.23" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.806" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.807" type="DEFAULT_BIKETYPE" depart="2969.84" color="blue" route="!f_1" distance="0 0" speedFactor="0.9169" reroute="1" state="264355 2970000 0 1.70 0 1.34 3010000 0 0" pos="54.88 53.28 1.35" speed="1.35 1.34" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_1.807" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.808" type="DEFAULT_BIKETYPE" depart="2973.52" color="blue" route="!f_1" distance="0 0" speedFactor="0.9195" reroute="1" state="264355 2974000 0 1.70 0 2.56 3010000 0 0" pos="47.82 46.22 1.26" speed="1.26 1.26" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.808" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.809" type="DEFAULT_BIKETYPE" depart="2977.20" color="blue" route="!f_1" distance="0 0" speedFactor="0.8694" reroute="1" state="264355 2978000 0 1.70 0 1.49 3010000 0 0" pos="41.48 39.88 1.26" speed="1.26 1.26" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.809" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.810" type="DEFAULT_BIKETYPE" depart="2980.88" color="blue" route="!f_1" distance="0 0" speedFactor="1.0055" reroute="1" state="264355 2981000 0 1.70 0 5.30 3010000 0 0" pos="37.45 35.85 1.26" speed="1.26 1.26" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.810" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.811" type="DEFAULT_BIKETYPE" depart="2984.56" color="blue" route="!f_1" distance="0 0" speedFactor="0.9099" reroute="1" state="264355 2987000 0 1.70 0 1.25 3010000 0 0" pos="31.38 29.78 1.30" speed="1.30 1.31" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.811" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.812" type="DEFAULT_BIKETYPE" depart="2988.24" color="blue" route="!f_1" distance="0 0" speedFactor="0.9788" reroute="1" state="264355 2989000 0 1.70 0 1.97 3010000 0 0" pos="29.64 28.04 1.23" speed="1.23 1.25" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_1.812" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.813" type="DEFAULT_BIKETYPE" depart="2991.92" color="blue" route="!f_1" distance="0 0" speedFactor="0.9395" reroute="1" state="264355 2993000 0 1.70 0 1.07 3010000 0 0" pos="24.15 22.55 1.37" speed="1.37 1.37" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.813" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.814" type="DEFAULT_BIKETYPE" depart="2995.60" color="blue" route="!f_1" distance="0 0" speedFactor="0.9680" reroute="1" state="264355 2996000 0 1.70 0 0.24 3010000 0 0" pos="21.68 20.08 1.45" speed="1.45 1.45" angle="90.52" posLat="-1.00" waitingTime="100000 0">
+        <device id="routing_f_1.814" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.815" type="DEFAULT_BIKETYPE" depart="2999.28" color="blue" route="!f_1" distance="0 0" speedFactor="0.9802" reroute="1" state="264355 3000000 0 1.70 0 0.74 3010000 0 0" pos="15.32 13.72 1.44" speed="1.44 1.44" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.815" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.816" type="DEFAULT_BIKETYPE" depart="3002.96" color="blue" route="!f_1" distance="0 0" speedFactor="1.0086" reroute="1" state="264355 3003000 0 1.70 0 0.92 3010000 0 0" pos="10.90 9.30 1.31" speed="1.31 1.29" angle="90.52" posLat="-3.46" waitingTime="100000 0">
+        <device id="routing_f_1.816" state="1000"/>
+    </vehicle>
+    <vehicle id="f_1.817" type="DEFAULT_BIKETYPE" depart="3006.64" color="blue" route="!f_1" distance="0 0" speedFactor="1.0636" reroute="1" state="264355 3007000 0 1.70 0 0.35 3010000 0 0" pos="5.93 4.33 1.59" speed="1.59 1.57" angle="107.90" posLat="-3.00" waitingTime="100000 0">
+        <device id="routing_f_1.817" state="1000"/>
+    </vehicle>
+    <vehicle id="f_2.493" type="DEFAULT_VEHTYPE" depart="2958.00" color="yellow" route="!f_2" distance="0 0" speedFactor="0.9719" reroute="1" state="264355 2958000 0 5.10 35000 45.02 3010000 0 0" pos="99.31 94.31 0.00" speed="0.00 0.00" angle="90.52" posLat="0.00" waitingTime="100000 2 0 35000 37000 38000">
+        <device id="routing_f_2.493" state="1000"/>
+    </vehicle>
+    <vehicle id="f_2.494" type="DEFAULT_VEHTYPE" depart="2964.00" color="yellow" route="!f_2" distance="0 0" speedFactor="0.8775" reroute="1" state="264355 2964000 0 5.10 30000 38.89 3010000 0 0" pos="91.81 86.81 0.00" speed="0.00 0.00" angle="90.52" posLat="0.00" waitingTime="100000 1 0 30000">
+        <device id="routing_f_2.494" state="1000"/>
+    </vehicle>
+    <vehicle id="f_2.495" type="DEFAULT_VEHTYPE" depart="2970.00" color="yellow" route="!f_2" distance="0 0" speedFactor="0.8309" reroute="1" state="264355 2970000 0 5.10 25000 33.14 3010000 0 0" pos="84.31 79.31 0.00" speed="0.00 0.00" angle="90.52" posLat="0.00" waitingTime="100000 1 0 25000">
+        <device id="routing_f_2.495" state="1000"/>
+    </vehicle>
+    <vehicle id="f_2.496" type="DEFAULT_VEHTYPE" depart="2976.00" color="yellow" route="!f_2" distance="0 0" speedFactor="1.0607" reroute="1" state="264355 2976000 0 5.10 20000 29.13 3010000 0 0" pos="76.81 71.81 0.00" speed="0.00 0.00" angle="90.52" posLat="0.00" waitingTime="100000 1 0 20000">
+        <device id="routing_f_2.496" state="1000"/>
+    </vehicle>
+    <vehicle id="f_2.497" type="DEFAULT_VEHTYPE" depart="2982.00" color="yellow" route="!f_2" distance="0 0" speedFactor="0.9715" reroute="1" state="264355 2982000 0 5.10 14000 23.24 3010000 0 0" pos="69.31 64.31 0.00" speed="0.00 0.00" angle="90.52" posLat="0.00" waitingTime="100000 1 0 14000">
+        <device id="routing_f_2.497" state="1000"/>
+    </vehicle>
+    <vehicle id="f_2.498" type="DEFAULT_VEHTYPE" depart="2988.00" color="yellow" route="!f_2" distance="0 0" speedFactor="0.9921" reroute="1" state="264355 2988000 0 5.10 9000 17.88 3010000 0 0" pos="61.81 56.81 0.00" speed="0.00 0.00" angle="90.52" posLat="0.00" waitingTime="100000 1 0 9000">
+        <device id="routing_f_2.498" state="1000"/>
+    </vehicle>
+    <vehicle id="f_2.499" type="DEFAULT_VEHTYPE" depart="2994.00" color="yellow" route="!f_2" distance="0 0" speedFactor="1.0997" reroute="1" state="264355 2994000 0 5.10 4000 12.78 3010000 0 0" pos="54.30 49.30 0.01" speed="0.01 0.02" angle="90.52" posLat="0.00" waitingTime="100000 1 0 4000">
+        <device id="routing_f_2.499" state="1000"/>
+    </vehicle>
+    <vehicle id="f_2.500" type="DEFAULT_VEHTYPE" depart="3000.00" color="yellow" route="!f_2" distance="0 0" speedFactor="1.0020" reroute="1" state="264355 3000000 0 5.10 0 7.03 3010000 0 0" pos="46.40 41.40 0.42" speed="0.42 0.82" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_2.500" state="1000"/>
+    </vehicle>
+    <vehicle id="f_2.501" type="DEFAULT_VEHTYPE" depart="3006.00" color="yellow" route="!f_2" distance="0 0" speedFactor="1.0812" reroute="1" state="264355 3006000 0 5.10 0 2.54 3010000 0 0" pos="27.05 22.05 7.34" speed="7.34 6.99" angle="90.52" posLat="0.00" waitingTime="100000 0">
+        <device id="routing_f_2.501" state="1000"/>
+    </vehicle>
+    <flowState id="f_0" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" period="6.35" next="3016.20" end="12001.00" route="!f_0" done="475" index="475" reroute="1"/>
+    <flowState id="f_1" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" period="3.68" next="3010.32" end="12001.00" route="!f_1" done="818" index="818" reroute="1"/>
+    <flowState id="f_2" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" period="6.00" next="3012.00" end="12001.00" route="!f_2" done="502" index="502" reroute="1"/>
+    <lane id="E0_0">
+        <vehicles value="f_0.474 f_1.817 f_0.473 f_1.816 f_1.815 f_0.472 f_1.814 f_1.813 f_0.471 f_1.812 f_1.811 f_0.470 f_0.469 f_1.810 f_1.809 f_1.808 f_0.468 f_1.806 f_1.807 f_0.467 f_1.805 f_0.466 f_1.804 f_1.803 f_0.465 f_1.801 f_0.464 f_1.802 f_1.797 f_1.800 f_1.796 f_1.799 f_1.795 f_1.790 f_0.463 f_1.798 f_1.794 f_1.791 f_1.786 f_1.793 f_1.792 f_1.787 f_1.789 f_1.784 f_0.461 f_0.462 f_0.460 f_0.456 f_0.458 f_0.459 f_0.455 f_0.457 f_0.454"/>
+    </lane>
+    <lane id="E0_2">
+        <vehicles value="f_2.501 f_2.500 f_2.499 f_2.498 f_2.497 f_2.496 f_2.495 f_2.494 f_2.493"/>
+    </lane>
+    <lane id="E2_0">
+        <vehicles value="f_1.779 f_0.452 f_0.451 f_1.776 f_1.761 f_0.450 f_1.768 f_0.442 f_0.447 f_0.441 f_0.448 f_0.443 f_0.446"/>
+    </lane>
+    <lane id="E2_1">
+        <vehicles value="f_0.453 f_0.449 f_0.444 f_0.445"/>
+    </lane>
+    <tlLogic id="J1" programID="0" phase="1" duration="2000"/>
+</snapshot>

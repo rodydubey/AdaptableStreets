@@ -1,0 +1,7 @@
+<additional>
+	<rerouter id ="1" edges="E0" probability="1">
+		<interval begin="0" end="36000">
+			<closingReroute id="E0"/>
+		</interval>
+	</rerouter>
+</additional>

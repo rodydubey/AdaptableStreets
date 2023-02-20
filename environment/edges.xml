@@ -1,0 +1,44 @@
+<edges>
+
+    <edge id="-E0" from="J1" to="J0" numLanes="3" priority="-1" length="100.00">
+        <lane index="0" allow="pedestrian" speed="1.50" length="100.00" width="1.50" shape="48.36,58.86 -39.36,59.65"/>
+        <lane index="1" allow="bicycle" speed="5.00" length="100.00" width="1.50" shape="48.35,57.36 -39.38,58.15"/>
+        <lane index="2" allow="passenger" speed="13.89" length="100.00" width="9.60" shape="48.30,51.81 -39.43,52.60"/>
+    </edge>
+    <edge id="-E1" from="J2" to="J1" numLanes="3" priority="-1" length="100.00">
+        <lane index="0" allow="pedestrian" speed="1.50" length="100.00" width="1.50" shape="50.03,120.68 50.60,61.10"/>
+        <lane index="1" allow="bicycle" speed="5.00" length="100.00" width="1.50" shape="51.53,120.69 52.10,61.12"/>
+        <lane index="2" allow="passenger" speed="13.89" length="100.00" width="9.60" shape="57.08,120.74 57.65,61.17"/>
+    </edge>
+    <edge id="-E2" from="J3" to="J1" numLanes="3" priority="-1" length="100.00">
+        <lane index="0" allow="pedestrian" speed="1.50" length="100.00" width="1.50" shape="149.72,59.69 76.58,58.88"/>
+        <lane index="1" allow="bicycle" speed="5.00" length="100.00" width="1.50" shape="149.74,58.19 76.59,57.38"/>
+        <lane index="2" allow="passenger" speed="13.89" length="100.00" width="9.60" shape="149.80,52.64 76.65,51.84"/>
+    </edge>
+    <edge id="-E3" from="J4" to="J1" numLanes="3" priority="-1" length="100.00">
+        <lane index="0" allow="pedestrian" speed="1.50" length="100.00" width="1.50" shape="74.92,-28.08 74.53,32.91"/>
+        <lane index="1" allow="bicycle" speed="5.00" length="100.00" width="1.50" shape="73.42,-28.09 73.03,32.90"/>
+        <lane index="2" allow="passenger" speed="13.89" length="100.00" width="9.60" shape="67.87,-28.13 67.48,32.87"/>
+    </edge>
+    <edge id="E0" from="J0" to="J1" numLanes="3" priority="-1" length="100.00">
+        <lane index="0" allow="pedestrian" speed="1.50" length="100.00" width="1.50" shape="-39.58,35.95 48.15,35.16"/>
+        <lane index="1" allow="bicycle" speed="5.00" length="100.00" width="1.50" shape="-39.56,37.45 48.16,36.66"/>
+        <lane index="2" allow="passenger" speed="13.89" length="100.00" width="9.60" shape="-39.51,43.00 48.21,42.21"/>
+    </edge>
+    <edge id="E1" from="J1" to="J2" numLanes="3" priority="-1" length="100.00">
+        <lane index="0" allow="pedestrian" speed="1.50" length="100.00" width="1.50" shape="74.30,61.33 73.73,120.90"/>
+        <lane index="1" allow="bicycle" speed="5.00" length="100.00" width="1.50" shape="72.80,61.32 72.23,120.89"/>
+        <lane index="2" allow="passenger" speed="13.89" length="100.00" width="9.60" shape="67.25,61.26 66.68,120.84"/>
+    </edge>
+    <edge id="E2" from="J1" to="J3" numLanes="3" priority="-1" length="100.00">
+        <lane index="0" allow="pedestrian bicycle" speed="1.50" length="100.00" width="1.50" shape="76.84,35.19 149.98,35.99"/>
+        <lane index="1" allow="bicycle" speed="5.00" length="100.00" width="1.50" shape="76.82,36.69 149.96,37.49"/>
+        <lane index="2" allow="passenger" speed="13.89" length="100.00" width="9.60" shape="76.76,42.24 149.90,43.04"/>
+    </edge>
+    <edge id="E3" from="J1" to="J4" numLanes="3" priority="-1" length="100.00">
+        <lane index="0" allow="pedestrian" speed="1.50" length="100.00" width="1.50" shape="50.83,32.76 51.22,-28.24"/>
+        <lane index="1" allow="bicycle" speed="5.00" length="100.00" width="1.50" shape="52.33,32.77 52.72,-28.23"/>
+        <lane index="2" allow="passenger" speed="13.89" length="100.00" width="9.60" shape="57.88,32.81 58.27,-28.19"/>
+    </edge>
+
+</edges>

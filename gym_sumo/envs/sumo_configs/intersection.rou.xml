@@ -1,0 +1,37 @@
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    
+    <flow id="f_0" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="E0" to="E2" via="E0 E2" end="3600.00" vehsPerHour="200" />
+    <flow id="f_1" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="E0" to="E2" via="E0 E2" end="3600.00" vehsPerHour="200" />
+    <flow id="f_2" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="E0" to="E2" via="E0 E2" end="3600.00" vehsPerHour="1200" />
+	
+	<flow id="f_27" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="-E1" to="E3" via="-E1 E3" end="3600.00" vehsPerHour="200" />
+    <flow id="f_28" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="-E1" to="E3" via="-E1 E3" end="3600.00" vehsPerHour="200" />
+    <flow id="f_29" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="-E1" to="E3" via="-E1 E3" end="3600.00" vehsPerHour="1200" />
+
+    <flow id="f_18" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="-E2" to="-E0" via="-E2 -E0" end="3600.00" vehsPerHour="200" />
+    <flow id="f_19" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="-E2" to="-E0" via="-E2 -E0" end="3600.00" vehsPerHour="200" />
+    <flow id="f_20" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="-E2" to="-E0" via="-E2 -E0" end="3600.00" vehsPerHour="1200" />
+
+    <!-- <flow id="f_3" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="E0" to="E1" via="E0 E1" end="3600.00" vehsPerHour="400" />
+    <flow id="f_4" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="E0" to="E1" via="E0 E1" end="3600.00" vehsPerHour="400" />
+    <flow id="f_5" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="E0" to="E1" via="E0 E1" end="3600.00" vehsPerHour="600" />
+
+    <flow id="f_6" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="E0" to="E3" via="E0 E3" end="3600.00" vehsPerHour="400" />
+    <flow id="f_7" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="E0" to="E3" via="E0 E3" end="3600.00" vehsPerHour="400" />
+    <flow id="f_8" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="E0" to="E3" via="E0 E3" end="3600.00" vehsPerHour="600" />
+
+
+    <flow id="f_9" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="-E2" to="-E0" via="-E2 -E0" end="3600.00" vehsPerHour="400" />
+    <flow id="f_10" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="-E2" to="-E0" via="-E2 -E0" end="3600.00" vehsPerHour="400" />
+    <flow id="f_11" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="-E2" to="-E0" via="-E2 -E0" end="3600.00" vehsPerHour="600" />
+
+    <flow id="f_12" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="-E2" to="E1" via="-E2 E1" end="3600.00" vehsPerHour="400" />
+    <flow id="f_13" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="-E2" to="E1" via="-E2 E1" end="3600.00" vehsPerHour="400" />
+    <flow id="f_14" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="-E2" to="E1" via="-E2 E1" end="3600.00" vehsPerHour="600" />
+
+    <flow id="f_15" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="-E2" to="E3" via="-E2 E3" end="3600.00" vehsPerHour="400" />
+    <flow id="f_16" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="-E2" to="E3" via="-E2 E3" end="3600.00" vehsPerHour="400" />
+    <flow id="f_17" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="-E2" to="E3" via="-E2 E3" end="3600.00" vehsPerHour="600" /> -->
+
+
+</routes>
