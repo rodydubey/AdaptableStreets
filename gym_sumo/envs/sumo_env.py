@@ -1,28 +1,18 @@
 from gym import Env
 from gym import spaces
-from gym.envs.registration import EnvSpec
 from gym.utils import seeding
 import traci
-# import traci.constants as tc
-# import libsumo as traci
-# from scipy.misc import imread
 from gym import spaces
-from string import Template
 import numpy as np
 import math
-import time
 import random
-from cv2 import imread,imshow,resize
-import cv2
-from collections import namedtuple
 from sumolib import checkBinary
-import os, sys, subprocess
+import os, sys
 from gym_sumo.envs.adapt_network import adaptNetwork
 from gym_sumo.envs.adapt_route_file import adaptRouteFile
 import xml.etree.ElementTree as ET
 import math
 from itertools import combinations
-from collections import Counter
 
 class SUMOEnv(Env):
 	metadata = {'render.modes': ['human', 'rgb_array','state_pixels']}
@@ -37,7 +27,8 @@ class SUMOEnv(Env):
 		self._mode = mode
 		self._seed(40)
 		self.counter = 2
-		self.traci = self.initSimulator(True,8870)
+		self.withGUI = mode=='gui'
+		self.traci = self.initSimulator(self.withGUI,8870)
 		self._sumo_step = 0
 		self._episode = 0
 		self._flag = True       
@@ -47,6 +38,7 @@ class SUMOEnv(Env):
 		self._weightBikePed = 2 
 		# self._gamma = 0.75
 		self._slotId = 1
+		self.base_netfile = "environment/intersection.net.xml"
 		self._routeFileName = "environment/intersection_Slot_1.rou.xml" # default name 
 		self._max_steps = 24000
 		self._slot_duration = 1200
@@ -309,7 +301,7 @@ class SUMOEnv(Env):
 	def reset(self,testFlag):		
 		self._sumo_step = 0
 		self.resetAllVariables()
-		
+
 		self._slotId = random.randint(1, 27)
 		#Adapt Route File for continous change
 		# self._slotId = 24 # temporary
@@ -354,20 +346,6 @@ class SUMOEnv(Env):
 
 	# def _observation(self,agent):
 	# 	return self.getState(agent)
-
-	def _render(self, mode='gui', close=False):
-
-		if self.mode == "gui":
-			img = imread(os.path.join(os.path.dirname(os.path.realpath(__file__)),'sumo.png'), 1)
-			if mode == 'rgb_array':
-				return img
-			elif mode == 'human':
-				from gym.envs.classic_control import rendering
-				if self.viewer is None:
-					self.viewer = rendering.SimpleImageViewer()
-				self.viewer.imshow(img)
-		else:
-			raise NotImplementedError("Only rendering in GUI mode is supported")
 
 
 	def getQueueLength(self,laneID):
@@ -688,7 +666,7 @@ class SUMOEnv(Env):
 	# set env action for a particular agent
 	def _set_action(self, actionDict, agent, action_space, time=None):
 		# process action
-		adaptNetwork(actionDict,agent.name,self._routeFileName,self.sumoCMD)
+		adaptNetwork(self.base_netfile,actionDict,agent.name,self._routeFileName,self.sumoCMD)
 		# t = 0
 
 	def QueueLength(self):
@@ -718,7 +696,7 @@ class SUMOEnv(Env):
 			sumoBinary = checkBinary('sumo')
 
 
-		sumoConfig = "C:/D/SUMO/MARL/multiagentRL/gym_sumo/envs/sumo_configs/intersection.sumocfg"
+		sumoConfig = "gym_sumo/envs/sumo_configs/intersection.sumocfg"
 
 		# Call the sumo simulator
 		# sumoProcess = subprocess.Popen([sumoBinary, "-c", sumoConfig, "--remote-port", str(portnum), \
@@ -737,9 +715,9 @@ class SUMOEnv(Env):
 
 		# Initialize the simulation
 		# traci.init(portnum)
-		print(" ".join([sumoBinary] + self.sumoCMD + ["-c", sumoConfig]))
-		traci.start([sumoBinary] + self.sumoCMD + ["-c", sumoConfig])
-		return traci
+		traci.start([sumoBinary] + ["-c", sumoConfig] + self.sumoCMD)
+		conn = traci.getConnection('default')
+		return conn
 
 	def closeSimulator(traci):
 		traci.close()

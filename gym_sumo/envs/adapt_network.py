@@ -2,10 +2,9 @@
 
 import xml.etree.ElementTree as ET
 import traci
+from sumolib import checkBinary
 # import libsumo as traci
 import os
-import sys
-import random
 import numpy as np
 baselineCarLaneWidth = 9.6
 baselinebicycleLaneWidth = 1.5
@@ -17,9 +16,9 @@ def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
 #function
-def adaptNetwork(actionDict,name,routeFileName,sumoCMD):
+def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD):
     # parsing directly.
-    tree = ET.parse('environment\intersection.net.xml')
+    tree = ET.parse(base_network)
     root = tree.getroot()
    
     remainderRoad_0 = 0
@@ -88,15 +87,15 @@ def adaptNetwork(actionDict,name,routeFileName,sumoCMD):
         
         
     #  write xml 
-    file_handle = open("environment/intersection2.net.xml","wb")
+    modified_netfile = 'environment/intersection2.net.xml'
+    file_handle = open(modified_netfile,"wb")
     tree.write(file_handle)
     file_handle.close()
     # call netconvert            
     # os.system("C:/D/SUMO/SumoFromSource/bin/netconvert.exe -s environment\intersection2.net.xml -o environment\intersection2.net.xml --crossings.guess")
     # os.system("C:/D/SUMO/SumoFromSource/bin/netconvert.exe -s environment\intersection2.net.xml -o environment\intersection2.net.xml")
-    netConverExePath = os.path.join(os.environ['SUMO_HOME'], 'bin') + "/netconvert.exe"
-    print(netConverExePath)
-    os.system("netconvert.exe -s environment/intersection2.net.xml -o environment/intersection2.net.xml")
+    netconvert = checkBinary('netconvert')
+    os.system(f"{netconvert} -s {modified_netfile} -o {modified_netfile}")
     # allVehicles = traci.vehicle.getIDList()
     
     # peds= traci.lane.getLastStepVehicleIDs("E0_0")
@@ -137,7 +136,7 @@ def adaptNetwork(actionDict,name,routeFileName,sumoCMD):
     # traci.load(['-n', "environment\intersection2.net.xml","--start"])
 
     # traci.load(sumoCMD + ['-n', 'environment/intersection2.net.xml', '-r', routeFileName, '--additional-files',"environment/intersection2.add.xml"])
-    traci.load(sumoCMD + ['-n', 'environment/intersection2.net.xml', '-r', routeFileName])
+    traci.load(sumoCMD + ['-n', modified_netfile, '-r', routeFileName])
     # traci.load(['-n', 'environment/intersection2.net.xml', '-r', routeFileName, "--start"]) # should we keep the previous vehic
    
     # load last saved state

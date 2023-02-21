@@ -1,19 +1,11 @@
 import numpy as np
 import sys
 sys.path.append('C:/D/SUMO/MARL/multiagentRL/')
-import gym
-import gym_sumo
-import random
+from gym_sumo.envs import SUMOEnv
 from matplotlib import pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
-import wandb
 from argparse import ArgumentParser
-from tensorflow import keras
-import tensorflow as tf
-import time
-import json
-import os
 from tqdm import tqdm
 
 from config import *
@@ -32,7 +24,8 @@ config = dict(
   env = ENV_NAME
 )
 
-env = gym.make('SumoGUI-v0')
+# env = gym.make('SumoGUI-v0')
+env = SUMOEnv(mode='gui')
 print(env.action_space)
 print(env.observation_space)
 super_agent = SuperAgent(env)

@@ -1,6 +1,4 @@
 import xml.etree.ElementTree as ET
-import os
-import sys
 import random
 
 
@@ -45,7 +43,7 @@ def adaptRouteFile(slotId):
                 carFlowCount = carFlowCount - int(carFlowCount*percentage/100)
             flows.attrib['vehsPerHour'] = repr(carFlowCount)
     
-    filename = "environment\intersection_Slot_" + str(slotId) + ".rou.xml"
-    file_handle = open(filename,"wb")
+    # filename = "environment/intersection_Slot_" + str(slotId) + ".rou.xml"
+    file_handle = open(routeFileName,"wb")
     tree.write(file_handle)
     file_handle.close()
