@@ -9,8 +9,8 @@ ENV_NAME = 'Adaptable_street_rl'
 
 
 PATH_SAVE_MODEL = "model/{}/".format(ENV_NAME)
-# PATH_LOAD_FOLDER = "model/Adaptable_street_rl/save_agent_202302120221/"
-PATH_LOAD_FOLDER = None
+PATH_LOAD_FOLDER = "model/Adaptable_street_rl/save_agent_202302211002/"
+# PATH_LOAD_FOLDER = None
 
 BUFFER_CAPACITY = 100000
 BATCH_SIZE = 128
