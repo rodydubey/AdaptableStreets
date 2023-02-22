@@ -5,12 +5,15 @@ import traci
 from sumolib import checkBinary
 # import libsumo as traci
 import os
+import sys
 import numpy as np
 baselineCarLaneWidth = 9.6
 baselinebicycleLaneWidth = 1.5
 baselinePedestrianLaneWidth = 1.5
 totalEdgeWidth = baselineCarLaneWidth + baselinebicycleLaneWidth + baselinePedestrianLaneWidth
 
+netconvert = checkBinary("netconvert")
+sys.path.append(netconvert)
 
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
@@ -94,8 +97,8 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD):
     # call netconvert            
     # os.system("C:/D/SUMO/SumoFromSource/bin/netconvert.exe -s environment\intersection2.net.xml -o environment\intersection2.net.xml --crossings.guess")
     # os.system("C:/D/SUMO/SumoFromSource/bin/netconvert.exe -s environment\intersection2.net.xml -o environment\intersection2.net.xml")
-    netconvert = checkBinary('netconvert')
-    os.system(f"{netconvert} -s {modified_netfile} -o {modified_netfile}")
+    # netconvert = checkBinary("netconvert")
+    os.system(f"netconvert -s {modified_netfile} -o {modified_netfile}")
     # allVehicles = traci.vehicle.getIDList()
     
     # peds= traci.lane.getLastStepVehicleIDs("E0_0")
