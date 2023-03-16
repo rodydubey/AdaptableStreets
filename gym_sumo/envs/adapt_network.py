@@ -1,9 +1,11 @@
 # adaptNetwork.py
 
 import xml.etree.ElementTree as ET
-import traci
+try:
+	import libsumo as traci
+except:
+	import traci
 from sumolib import checkBinary
-# import libsumo as traci
 import os
 import sys
 import numpy as np
@@ -19,7 +21,7 @@ def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
 #function
-def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD):
+def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid):
     # parsing directly.
     tree = ET.parse(base_network)
     root = tree.getroot()
@@ -92,7 +94,7 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD):
         
         
     #  write xml 
-    modified_netfile = 'environment/intersection2.net.xml'
+    modified_netfile = f'environment/intersection2_{pid}.net.xml'
     file_handle = open(modified_netfile,"wb")
     tree.write(file_handle)
     file_handle.close()

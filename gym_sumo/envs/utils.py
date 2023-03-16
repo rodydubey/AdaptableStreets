@@ -6,7 +6,7 @@ import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
 
-tree = ET.parse('environment\intersection_Slot_3_backup.rou.xml')
+tree = ET.parse('environment/intersection_Slot_3_backup.rou.xml')
 root = tree.getroot()
 
 
@@ -339,7 +339,7 @@ def generateFlowFiles(scenario):
                 if flows.attrib['id'] == "f_35":
                     flows.attrib['vehsPerHour'] = repr(carFlowCount)
 
-            filename = "environment\intersection_Slot_" + str(i+1) + ".rou.xml"
+            filename = "environment/intersection_Slot_" + str(i+1) + ".rou.xml"
             file_handle = open(filename,"wb")
             tree.write(file_handle)
             file_handle.close()

@@ -1,7 +1,10 @@
 from gym import Env
 from gym import spaces
 from gym.utils import seeding
-import traci
+try:
+	import libsumo as traci
+except:
+	import traci
 from gym import spaces
 import numpy as np
 import math
@@ -21,14 +24,14 @@ class SUMOEnv(Env):
 	def __init__(self,reset_callback=None, reward_callback=None,
                  observation_callback=None, info_callback=None,
                  done_callback=None, shared_viewer=True,mode='gui',simulation_end=36000):
-
+		self.pid = os.getpid()
 		self.sumoCMD = []
 		self._simulation_end = simulation_end
 		self._mode = mode
 		self._seed(40)
 		self.counter = 2
 		self.withGUI = mode=='gui'
-		self.traci = self.initSimulator(self.withGUI,8870)
+		self.traci = self.initSimulator(self.withGUI,self.pid)
 		self._sumo_step = 0
 		self._episode = 0
 		self._flag = True       
@@ -872,7 +875,7 @@ class SUMOEnv(Env):
 				agent.done = False
 		
 		self._sumo_step = 0
-		# adaptRouteFile(self._slotId)
+		# adaptRouteFile(self._slotId, .pid)
 		# traci.load(self.sumoCMD + ['-n', 'environment/intersection.net.xml', '-r', self._routeFileName])
 		#simulating a warm period of N=self.action_steps  and then recording the state, action, reward tuple. 
 		bikeLaneWidth = traci.lane.getWidth('E0_1')
@@ -1040,7 +1043,7 @@ class SUMOEnv(Env):
 	def _set_action(self, actionDict, agent, action_space, time=None):
 		# process action
 		t = 0
-		adaptNetwork(self.base_netfile,actionDict,agent.name,self._routeFileName,self.sumoCMD)
+		adaptNetwork(self.base_netfile,actionDict,agent.name,self._routeFileName,self.sumoCMD, self.pid)
 		# t = 0
 	def testAnalysisStats(self):
 		bikeLaneWidth = traci.lane.getWidth('E0_1')
@@ -1111,8 +1114,7 @@ class SUMOEnv(Env):
 		# Initialize the simulation
 		# traci.init(portnum)
 		traci.start([sumoBinary] + ["-c", sumoConfig] + self.sumoCMD)
-		conn = traci.getConnection('default')
-		return conn
+		return traci
 
 	def closeSimulator(traci):
 		traci.close()

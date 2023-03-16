@@ -29,9 +29,9 @@ class SuperAgent:
         #     list_actions.append(act)
         return list_actions
     
-    def save(self):
+    def save(self, pid):
         date_now = time.strftime("%Y%m%d%H%M")
-        full_path = f"{self.path_save}/save_agent_{date_now}"
+        full_path = f"{self.path_save}/save_agent_{date_now}_{pid}"
         if not os.path.isdir(full_path):
             os.makedirs(full_path)
         
