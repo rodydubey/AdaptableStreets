@@ -1,3 +1,10 @@
+# gym_sumo files
+stat_train*.csv
+intersection2*.xml
+model/
+wandb/
+slurm*.out
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
