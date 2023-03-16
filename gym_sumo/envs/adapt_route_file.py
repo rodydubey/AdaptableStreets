@@ -7,9 +7,9 @@ def cointoss():
     return random.choice(["Heads", "Tails"])
 
 #function
-def adaptRouteFile(slotId):
+def adaptRouteFile(slotId, pid):
 
-    routeFileName = "environment/intersection_Slot_" + str(slotId) + ".rou.xml"   
+    routeFileName = f"environment/intersection_Slot_{slotId}_{pid}.rou.xml"   
     tree = ET.parse(routeFileName)
     root = tree.getroot()
 

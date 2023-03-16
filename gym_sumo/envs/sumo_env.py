@@ -353,7 +353,7 @@ class SUMOEnv(Env):
 			self._slotId = random.randint(1, 27)
 			#Adapt Route File for continous change
 			# self._slotId = 9 # temporary
-			# adaptRouteFile(self._slotId)
+			# adaptRouteFile(self._slotId, self.pid)
 			# if self._slotId < 27:
 			# 	self._slotId += 1 
 			# else:
@@ -875,7 +875,7 @@ class SUMOEnv(Env):
 				agent.done = False
 		
 		self._sumo_step = 0
-		# adaptRouteFile(self._slotId, .pid)
+		# adaptRouteFile(self._slotId, self.pid)
 		# traci.load(self.sumoCMD + ['-n', 'environment/intersection.net.xml', '-r', self._routeFileName])
 		#simulating a warm period of N=self.action_steps  and then recording the state, action, reward tuple. 
 		bikeLaneWidth = traci.lane.getWidth('E0_1')
