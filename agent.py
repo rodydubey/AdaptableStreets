@@ -89,16 +89,17 @@ class Agent:
         # ou_noise = OUNoise(1)
         # noise = ou_noise.sample()
         normal_scalar = 0.15
-        noise = np.random.randn(1) * normal_scalar
+        noise_uniform = np.random.randn(1) * normal_scalar
         actions = self.actor(actor_states)
         # print(actions)
         if not evaluation:
             if random.random() < epsilon: # Decide whether to perform an explorative or exploitative action, according to an epsilon-greedy policy during non-evaluation phase
-                actions = actions + noise
+                actions = actions + noise_uniform
             else:
                 print("exploitation")
-        # ou_noise.reset()        
-        actions = clamp(actions.numpy()[0],0.1,0.9)
+        # ou_noise.reset() 
+        # actions = actions + noise_uniform       
+        actions = np.clip(actions.numpy()[0],0.1,0.9)
         return actions
     
     def save(self, path_save):

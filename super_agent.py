@@ -46,6 +46,16 @@ class SuperAgent:
             agent.load(full_path)
             
         self.replay_buffer.load(full_path)
+
+    # def printCriticValues(self,states,actions):
+    #     aaa = [a.reshape(1,1) for a in actions]
+    #     aa = tf.concat(aaa,axis=1)
+    #     ss = tf.convert_to_tensor(states)
+    #     print(self.agents[0].target_critic(tf.reshape(ss,(1,-1)),tf.reshape(aa,(1,-1))))
+    #     print(self.agents[1].target_critic(tf.reshape(ss,(1,-1)),tf.reshape(aa,(1,-1))))
+    #     print(self.agents[2].target_critic(tf.reshape(ss,(1,-1)),tf.reshape(aa,(1,-1))))
+
+
     
     def train(self):
         if self.replay_buffer.check_buffer_size() == False:
@@ -70,6 +80,7 @@ class SuperAgent:
             concat_actors_action = tf.concat(actors_actions, axis=1)
             
             target_critic_values = [tf.squeeze(self.agents[index].target_critic(next_states, concat_target_actions), 1) for index in range(self.n_agents)]
+            # print(target_critic_values)
             critic_values = [tf.squeeze(self.agents[index].critic(states, concat_actors_action), 1) for index in range(self.n_agents)]
             targets = [rewards[:, index] + self.agents[index].gamma * target_critic_values[index] * (1-done[:, index]) for index in range(self.n_agents)]
             critic_losses = [tf.keras.losses.MSE(targets[index], critic_values[index]) for index in range(self.n_agents)]

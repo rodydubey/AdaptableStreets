@@ -18,7 +18,7 @@ def adaptRouteFile(slotId):
     for flows in root.iter('flow'):
         if flows.attrib['id'] == "f_0":
             currentPedCount = int(flows.attrib['vehsPerHour'])
-            percentage = random.randint(1, 10)
+            percentage = random.randint(1, 5)
             if cointoss() == "Heads":
                 currentPedCount = currentPedCount + int(currentPedCount*percentage/100)
             else:
@@ -27,7 +27,7 @@ def adaptRouteFile(slotId):
 
         if flows.attrib['id'] == "f_1":
             bikeFlowCount = int(flows.attrib['vehsPerHour'])
-            percentage = random.randint(1, 10)
+            percentage = random.randint(1, 5)
             if cointoss() == "Heads":
                 bikeFlowCount = bikeFlowCount + int(bikeFlowCount*percentage/100)
             else:
@@ -36,7 +36,7 @@ def adaptRouteFile(slotId):
 
         if flows.attrib['id'] == "f_2":
             carFlowCount = int(flows.attrib['vehsPerHour'])
-            percentage = random.randint(1, 10)
+            percentage = random.randint(1, 5)
             if cointoss() == "Heads":
                 carFlowCount = carFlowCount + int(carFlowCount*percentage/100)
             else:
@@ -47,3 +47,6 @@ def adaptRouteFile(slotId):
     file_handle = open(routeFileName,"wb")
     tree.write(file_handle)
     file_handle.close()
+    print(currentPedCount)
+    print(bikeFlowCount)
+    print(carFlowCount)

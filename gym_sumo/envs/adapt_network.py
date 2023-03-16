@@ -60,7 +60,9 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD):
     # coShare = 0.1
     #E0 is for agent 0 and 1, #-E0 is for agent 2 and 3, #E1 is for agent 4 and 5, #-E1 is for agent 6 and 7
     #E2 is for agent 8 and 9, #-E2 is for agent 10 and 11, #E3 is for agent 12 and 13, #-E3 is for agent 14 and 15
-    
+    # coShare = 0.6
+    # if coShare > 0.5:
+    #     coShare = 0.1
     if coShare <= 0.5:
         for lanes in root.iter('lane'):
             if lanes.attrib['id'] == "E0_2":
@@ -134,7 +136,7 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD):
     
         
     # save state
-    traci.simulation.saveState('environment/savedstate.xml') 
+    # traci.simulation.saveState('environment/savedstate.xml') 
     # load traci simulation   
     # traci.load(['-n', "environment\intersection2.net.xml","--start"])
 
@@ -143,7 +145,7 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD):
     # traci.load(['-n', 'environment/intersection2.net.xml', '-r', routeFileName, "--start"]) # should we keep the previous vehic
    
     # load last saved state
-    traci.simulation.loadState('environment/savedstate.xml')
+    # traci.simulation.loadState('environment/savedstate.xml')
 
     #change lane sharing based on agent choice
     if coShare <= 0.5:

@@ -15,12 +15,15 @@ import time
 import json
 import os
 from tqdm import tqdm
-
+import csv
 from config import *
 from replay_buffer import *
 from networks import *
 from agent import *
 from super_agent import *
+from gym_sumo.envs.utils import generateFlowFiles
+from gym_sumo.envs.utils import plot_scores
+from gym_sumo.envs.utils import print_status
 
 config = dict(
   learning_rate_actor = ACTOR_LR,
@@ -52,99 +55,114 @@ avg_score_list = []
 PRINT_INTERVAL = 101
 epsilon = 0
 evaluation = True
+
+#generate training files 
+generateFlowFiles("Train")
 if PATH_LOAD_FOLDER is not None:
-    print("loading weights")
-    actors_state = env.reset(False)
-    actors_action = super_agent.get_actions([actors_state[index][None, :] for index in range(super_agent.n_agents)],epsilon,evaluation)
-    [super_agent.agents[index].target_actor(actors_state[index][None, :]) for index in range(super_agent.n_agents)]
-    state = np.concatenate(actors_state)
-    actors_action = np.concatenate(actors_action)
-    [super_agent.agents[index].critic(state[None, :], actors_action[None, :]) for index in range(super_agent.n_agents)]
-    [super_agent.agents[index].target_critic(state[None, :], actors_action[None, :]) for index in range(super_agent.n_agents)]
-    super_agent.load()
+    print("Edit configuration file")
+    exit()
+    
+trainResultFilePath = "stat_train.csv"    
+with open(trainResultFilePath, 'w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Car_Flow_Rate','Bike_Flow_Rate','Ped_Flow_Rate','Car_Lane_Width','Bike_Lane_Width','Ped_Lane_Width','Co_Sharing','Total_mean_speed_car','Total_mean_speed_bike','Total_mean_speed_ped','Total_Waiting_car_count','Total_Waiting_bike_count','Total_Waiting_ped_count','Total_unique_car_count','Total_unique_bike_count','Total_unique_ped_count', \
+             'Total_occupancy_car_Lane','Total_occupancy_bike_Lane','Total_occupancy_ped_Lane','Collision_count_bike','Collision_count_ped','total_density_bike_lane','total_density_ped_lane','total_density_car_lane','RewardAgent_0', 'RewardAgent_1','RewardAgent_2','Hinderance_bb','Hinderance_bp','Hinderance_pp','LevelOfService'])
 
-    print(super_agent.replay_buffer.buffer_counter)
-    print(super_agent.replay_buffer.n_games)
-
-for n_game in tqdm(range(MAX_GAMES)):
-    start_time = time.time()
-    actors_state = env.reset(False)
-    done = [False for index in range(super_agent.n_agents)]
-    score = 0
-    step = 0
-    evaluation = False
-    # print("start")
-    epsilon = 1.0 - (n_game / MAX_GAMES)
-    # if n_game > MAX_GAMES - 200:
-    #     if epsilon > 0.1:
-    #         epsilon = 0.1
-    # loop through 20 times 600 simulation steps
-    while not any(done):      
-        # print("Epsilon :" + str(epsilon))
-        actors_action = super_agent.get_actions([actors_state[index][None, :] for index in range(super_agent.n_agents)],epsilon,evaluation)
-        
-        actors_next_state, reward, done, info = env.step(actors_action)
-        if step >= MAX_STEPS:
-            done = True
-        state = np.concatenate(actors_state)
-        next_state = np.concatenate(actors_next_state)
-        
-        super_agent.replay_buffer.add_record(actors_state, actors_next_state, actors_action, state, next_state, reward, done)
-        
-        actors_state = actors_next_state
-        
-        score += sum(reward) 
-        score_history.append(score)
-        step += 1
-        if step >= MAX_STEPS:
-            break
-    
-    
-    # if super_agent.replay_buffer.check_buffer_size():
-    #     super_agent.train()
-    if n_game % TRAINING_STEP == 0 and n_game > 0: 
-        super_agent.train()
-        print("Training Episode: " + str(n_game))
-        
-    super_agent.replay_buffer.update_n_games()
-    
-    scores.append(score)
-    # average of last 100 scores
-    avg_score = np.mean(score_history[-100:])
-    avg_score_list.append(avg_score)
-    if n_game % PRINT_INTERVAL == 0 and n_game > 0:
-        print('episode', n_game, 'average score {:.1f}'.format(avg_score))
-
-    
-    wandb.log({'Game number': super_agent.replay_buffer.n_games, '# Episodes': super_agent.replay_buffer.buffer_counter, 
-                "Average reward": round(np.mean(scores[-10:]), 2), \
-                      "Time taken": round(time.time() - start_time, 2)})
-    
-    if (n_game+1) % EVALUATION_FREQUENCY == 0 and super_agent.replay_buffer.check_buffer_size():
-        actors_state = env.reset(False)
+    for n_game in tqdm(range(MAX_GAMES)):
+        start_time = time.time()
+        actors_state = env.reset("Train")
         done = [False for index in range(super_agent.n_agents)]
         score = 0
-        step = 0        
-        evaluation = True
-        while not any(done):
+        step = 0
+        evaluation = False
+        coSharingCounter = 0
+        # print("start")
+        epsilon = 1.0 - (n_game / MAX_GAMES)
+        if n_game > MAX_GAMES - 20:
+            evaluation = True
+        # loop through 20 times 600 simulation steps
+        while not any(done):      
+            # print("Epsilon :" + str(epsilon))
             actors_action = super_agent.get_actions([actors_state[index][None, :] for index in range(super_agent.n_agents)],epsilon,evaluation)
+            
             actors_next_state, reward, done, info = env.step(actors_action)
+
+            carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
+                    car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane, total_density_car_lane,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService = env.testAnalysisStats()
+            
+            rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
+            # rewardAgent_0, rewardAgent_1 = env.rewardAnalysisStats()
+            writer.writerow([carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,\
+                total_unique_ped_count,car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane,total_density_car_lane,rewardAgent_0, rewardAgent_1,rewardAgent_2,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService])
+            if step >= MAX_STEPS:
+                done = True
             state = np.concatenate(actors_state)
             next_state = np.concatenate(actors_next_state)
+            
+            super_agent.replay_buffer.add_record(actors_state, actors_next_state, actors_action, state, next_state, reward, done)
+            
             actors_state = actors_next_state
-            score += sum(reward)
+            
+            if cosharing:
+                coSharingCounter+=1
+            # score += sum(reward)
+            score += reward[0]
+            score_history.append(score)
             step += 1
             if step >= MAX_STEPS:
                 break
-        wandb.log({'Game number': super_agent.replay_buffer.n_games, 
-                   '# Episodes': super_agent.replay_buffer.buffer_counter, 
-                   'Evaluation score': score})
+        
+        
+        # if super_agent.replay_buffer.check_buffer_size():
+        #     super_agent.train()
+        if n_game % TRAINING_STEP == 0 and n_game > 0: 
+            super_agent.train()
+            print("Training Episode: " + str(n_game))
             
-    if (n_game + 1) % SAVE_FREQUENCY == 0:
-        print("saving weights and replay buffer...")
-        super_agent.save()
-        print("saved")
+        super_agent.replay_buffer.update_n_games()
+        scores.append(score)
+        # scores.append([np.mean(score), np.min(score), np.max(score)])
+        # print_status(n_game, score, scores)
+        # average of last 100 scores
+        avg_score = np.mean(score_history[-100:])
+        avg_score_list.append(avg_score)
+        if n_game % PRINT_INTERVAL == 0 and n_game > 0:
+            print('episode', n_game, 'average score {:.1f}'.format(avg_score))
 
+        
+        wandb.log({'Game number': super_agent.replay_buffer.n_games, '# Episodes': super_agent.replay_buffer.buffer_counter, 
+                    "Average reward": round(np.mean(scores[-10:]), 2), \
+                          "Time taken": round(time.time() - start_time, 2),\
+                            "Cosharing Counter":coSharingCounter})
+        
+        if (n_game+1) % EVALUATION_FREQUENCY == 0 and super_agent.replay_buffer.check_buffer_size():
+            actors_state = env.reset("Train")
+            done = [False for index in range(super_agent.n_agents)]
+            score = 0
+            step = 0        
+            evaluation = True
+            while not any(done):
+                actors_action = super_agent.get_actions([actors_state[index][None, :] for index in range(super_agent.n_agents)],epsilon,evaluation)
+                actors_next_state, reward, done, info = env.step(actors_action)
+                state = np.concatenate(actors_state)
+                next_state = np.concatenate(actors_next_state)
+                actors_state = actors_next_state
+                score += sum(reward)
+                step += 1
+                if step >= MAX_STEPS:
+                    break
+            wandb.log({'Game number': super_agent.replay_buffer.n_games, 
+                       '# Episodes': super_agent.replay_buffer.buffer_counter, 
+                       'Evaluation score': score})
+                
+        if (n_game + 1) % SAVE_FREQUENCY == 0:
+            print("saving weights and replay buffer...")
+            super_agent.save()
+            print("saved")
+    
+
+
+plot_scores([scores], ['ou'], save_as='results/normal.png')
 
 plt.plot(avg_score_list)
 plt.savefig('results/avgScore.jpg')

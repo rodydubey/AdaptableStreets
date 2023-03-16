@@ -1,0 +1,42 @@
+{
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.9.7",
+    "heartbeatAt": "2023-03-06T15:30:36.881193",
+    "startedAt": "2023-03-06T15:30:36.277583",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "c:\\D\\SUMO\\AdaptableStreets\\training_main.py",
+    "codePath": "training_main.py",
+    "git": {
+        "remote": "https://github.com/rodydubey/AdapatableStreets.git",
+        "commit": "ed41c602e942479a9b1ae92b8dba6f27a28e1b19"
+    },
+    "email": null,
+    "root": "C:/D/SUMO/AdaptableStreets",
+    "host": "coss-w07",
+    "username": "rodubey",
+    "executable": "C:\\Python_3.9.7\\python.exe",
+    "cpu_count": 4,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 1803.0,
+        "min": 0.0,
+        "max": 2304.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 1803.0,
+            "min": 0.0,
+            "max": 2304.0
+        }
+    ],
+    "disk": {
+        "total": 475.81347274780273,
+        "used": 166.68167114257812
+    },
+    "memory": {
+        "total": 31.726200103759766
+    }
+}
