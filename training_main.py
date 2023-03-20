@@ -1,18 +1,14 @@
 import numpy as np
 import sys
 sys.path.append('C:/D/SUMO/MARL/multiagentRL/')
-import gym
-import gym_sumo
 from gym_sumo.envs import SUMOEnv
 from matplotlib import pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
 import wandb
 from argparse import ArgumentParser
-from tensorflow import keras
-import tensorflow as tf
+
 import time
-import json
 import os
 from tqdm import tqdm
 import csv
@@ -46,11 +42,9 @@ parser = ArgumentParser()
 parser.add_argument('--action',help='"train_from_scratch" or "resume_training", or "test"')
 args = parser.parse_args()
 
-# env = gym.make('SumoGUI-v0')
 display = 'DISPLAY' in os.environ
 use_gui = False
 mode = 'gui' if (use_gui and display) else 'none'
-print(" the display is ",display, mode)
 env = SUMOEnv(mode=mode)
 print(env.action_space)
 print(env.observation_space)
