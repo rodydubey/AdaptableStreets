@@ -102,7 +102,7 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid):
     # os.system("C:/D/SUMO/SumoFromSource/bin/netconvert.exe -s environment\intersection2.net.xml -o environment\intersection2.net.xml --crossings.guess")
     # os.system("C:/D/SUMO/SumoFromSource/bin/netconvert.exe -s environment\intersection2.net.xml -o environment\intersection2.net.xml")
     # netconvert = checkBinary("netconvert")
-    os.system(f"netconvert -s {modified_netfile} -o {modified_netfile}")
+    os.system(f"netconvert -s {modified_netfile} -o {modified_netfile} -W")
     # allVehicles = traci.vehicle.getIDList()
     
     # peds= traci.lane.getLastStepVehicleIDs("E0_0")
