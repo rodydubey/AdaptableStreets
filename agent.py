@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import optimizers as opt
-import random
 import time
 import json
 import os
@@ -11,7 +10,7 @@ from config import *
 from replay_buffer import *
 from networks import *
 
-
+np.random.seed(42)
 THETA=0.15
 DT=1e-1
 def clamp(n, minn, maxn):
@@ -93,7 +92,7 @@ class Agent:
         actions = self.actor(actor_states)
         # print(actions)
         if not evaluation:
-            if random.random() < epsilon: # Decide whether to perform an explorative or exploitative action, according to an epsilon-greedy policy during non-evaluation phase
+            if np.random.random() < epsilon: # Decide whether to perform an explorative or exploitative action, according to an epsilon-greedy policy during non-evaluation phase
                 actions = actions + noise_uniform
             else:
                 print("exploitation")

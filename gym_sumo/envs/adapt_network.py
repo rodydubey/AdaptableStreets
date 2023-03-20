@@ -3,6 +3,7 @@
 import xml.etree.ElementTree as ET
 try:
 	import libsumo as traci
+	# import traci
 except:
 	import traci
 from sumolib import checkBinary

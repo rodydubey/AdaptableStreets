@@ -3,12 +3,12 @@ from gym import spaces
 from gym.utils import seeding
 try:
 	import libsumo as traci
+	# import traci
 except:
 	import traci
 from gym import spaces
 import numpy as np
 import math
-import random
 from sumolib import checkBinary
 import os, sys
 from gym_sumo.envs.adapt_network import adaptNetwork
@@ -28,7 +28,8 @@ class SUMOEnv(Env):
 		self.sumoCMD = []
 		self._simulation_end = simulation_end
 		self._mode = mode
-		self._seed(40)
+		# self._seed(40)
+		np.random.seed(42)
 		self.counter = 2
 		self.withGUI = mode=='gui'
 		self.traci = self.initSimulator(self.withGUI,self.pid)
@@ -350,7 +351,7 @@ class SUMOEnv(Env):
 		self.resetAllVariables()
 		
 		if scenario=="Train":
-			self._slotId = random.randint(1, 27)
+			self._slotId = np.random.randint(1, 27)
 			#Adapt Route File for continous change
 			# self._slotId = 9 # temporary
 			# adaptRouteFile(self._slotId, self.pid)
@@ -361,12 +362,12 @@ class SUMOEnv(Env):
 			self._routeFileName = "environment/intersection_Slot_" + str(self._slotId) + ".rou.xml"
 			print(self._routeFileName)
 		elif scenario=="Test 0":
-			self._slotId = random.randint(1, 288)
+			self._slotId = np.random.randint(1, 288)
 			# self._slotId = 290
 			self._routeFileName = "testcase_0/intersection_Slot_" + str(self._slotId) + ".rou.xml"
 			print(self._routeFileName)
 		else:
-			self._slotId = random.randint(1, 288)
+			self._slotId = np.random.randint(1, 288)
 			self._routeFileName = "testcase_1/intersection_Slot_" + str(self._slotId) + ".rou.xml"
 			print(self._routeFileName)
 		
@@ -1086,16 +1087,18 @@ class SUMOEnv(Env):
 		# 				 "--random","-W","--default.carfollowmodel", "IDM","--no-step-log"]
 		self.sumoCMD = ["--time-to-teleport.disconnected",str(1),"--ignore-route-errors","--device.rerouting.probability","1","--device.rerouting.period","1",
 						"--pedestrian.striping.dawdling","0.5","--collision.check-junctions", str(True),"--collision.mingap-factor","0","--collision.action", "warn",
-						 "--random","-W","--default.carfollowmodel", "IDM","--no-step-log","--statistic-output","output.xml"]
+						 "--seed", "42", "-W","--default.carfollowmodel", "IDM","--no-step-log","--statistic-output","output.xml"]
 		if withGUI:
 			sumoBinary = checkBinary('sumo-gui')
-			self.sumoCMD += ["--start"]
+			self.sumoCMD += ["--start", "--quit-on-end"]
 		else:
 			sumoBinary = checkBinary('sumo')
 
 
 		sumoConfig = "gym_sumo/envs/sumo_configs/intersection.sumocfg"
-
+		sumoStartArgs = ['-n', 'gym_sumo/envs/sumo_configs/intersection.net.xml', 
+                  		 '-r', 'gym_sumo/envs/sumo_configs/intersection.rou.xml']
+		self.sumoCMD = ["-c", sumoConfig] + self.sumoCMD
 		# Call the sumo simulator
 		# sumoProcess = subprocess.Popen([sumoBinary, "-c", sumoConfig, "--remote-port", str(portnum), \
 		# 	"--time-to-teleport", str(-1), "--collision.check-junctions", str(True), \
@@ -1113,7 +1116,7 @@ class SUMOEnv(Env):
 
 		# Initialize the simulation
 		# traci.init(portnum)
-		traci.start([sumoBinary] + ["-c", sumoConfig] + self.sumoCMD)
+		traci.start([sumoBinary] + self.sumoCMD + sumoStartArgs)
 		return traci
 
 	def closeSimulator(traci):

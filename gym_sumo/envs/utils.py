@@ -1,11 +1,11 @@
 import xml.etree.ElementTree as ET
 import os
 import sys
-import random
 import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
 
+np.random.seed(42)
 tree = ET.parse('environment/intersection_Slot_3_backup.rou.xml')
 root = tree.getroot()
 
@@ -31,16 +31,16 @@ def generateFlowFiles(scenario):
         for i in range(288):
             
             #pick a random integer between 1 to 27
-            randomIndex = random.randint(1,27)
+            randomIndex = np.random.randint(1,27)
             combination = trafficFlowDataAll.get(str(randomIndex))
             x = combination.split("_",2)
             pedFlow = x[0]
             bikeFlow = x[1]
             carFlow = x[2]
             
-            pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) + random.randint(-100,+100)
-            bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow)) + random.randint(-100,+100)
-            carFlowCount =  carflowLevelDict.get(str(carFlow)) + random.randint(-100,+100)
+            pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) + np.random.randint(-100,+100)
+            bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow)) + np.random.randint(-100,+100)
+            carFlowCount =  carflowLevelDict.get(str(carFlow)) + np.random.randint(-100,+100)
 
             for flows in root.iter('flow'):
                 if flows.attrib['id'] == "f_0":
@@ -138,16 +138,16 @@ def generateFlowFiles(scenario):
         for i in range(288):
             
             #pick a random integer between 1 to 27
-            randomIndex = random.randint(1,27)
+            randomIndex = np.random.randint(1,27)
             combination = trafficFlowDataAll.get(str(randomIndex))
             x = combination.split("_",2)
             pedFlow = x[0]
             bikeFlow = x[1]
             carFlow = x[2]
             
-            pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) + random.randint(-100,+100)
-            bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow)) + random.randint(-100,+100)
-            carFlowCount =  carflowLevelDict.get(str(carFlow)) + random.randint(-100,+100)
+            pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) + np.random.randint(-100,+100)
+            bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow)) + np.random.randint(-100,+100)
+            carFlowCount =  carflowLevelDict.get(str(carFlow)) + np.random.randint(-100,+100)
 
             for flows in root.iter('flow'):
                 if flows.attrib['id'] == "f_0":

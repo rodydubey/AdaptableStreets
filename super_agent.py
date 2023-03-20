@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import optimizers as opt
-import random
 import time
 import json
 import os

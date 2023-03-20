@@ -5,6 +5,7 @@ import sys
 sys.path.append("../src")
 from config import *
 
+np.random.seed(42)
 class ReplayBuffer():
     def __init__(self, env, buffer_capacity=BUFFER_CAPACITY, batch_size=BATCH_SIZE, min_size_buffer=MIN_SIZE_BUFFER):
         self.buffer_capacity = buffer_capacity

@@ -4,7 +4,6 @@ sys.path.append('C:/D/SUMO/MARL/multiagentRL/')
 import gym
 import gym_sumo
 from gym_sumo.envs import SUMOEnv
-import random
 from matplotlib import pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
@@ -47,7 +46,7 @@ args = parser.parse_args()
 
 # env = gym.make('SumoGUI-v0')
 display = 'DISPLAY' in os.environ
-use_gui = True
+use_gui = False
 mode = 'gui' if (use_gui and display) else 'none'
 print(" the display is ",display, mode)
 env = SUMOEnv(mode=mode)
