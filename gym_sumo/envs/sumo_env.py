@@ -550,6 +550,7 @@ class SUMOEnv(Env):
 			levelOfServiceThreshold_A = 5
 			levelOfServiceThreshold_B = 10
 			reward = 0.5
+			self.reward_agent_2 = reward
 			if cosharing:
 				if self._levelOfService > levelOfServiceThreshold_A:
 					reward = -reward

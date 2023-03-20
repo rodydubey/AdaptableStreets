@@ -183,9 +183,10 @@ plt.savefig(f'{super_agent.full_path}/avgScore.jpg')
 plt.show()
 
 plt.figure()
-plt.plot(avg_cosharing_hist)
+plt.plot(avg_cosharing_hist, label=env.reward_agent_2)
 plt.xlabel('episodes')
 plt.ylabel('coshare score')
+plt.legend(loc='upper right')
 plt.savefig(f'{super_agent.full_path}/avgCosharing.jpg')
 
 plt.figure()
