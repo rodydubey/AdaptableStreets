@@ -177,16 +177,25 @@ with open(trainResultFilePath, 'w', newline='') as file:
 plot_scores([scores], ['ou'], save_as=f'{super_agent.full_path}/normal.png')
 
 plt.plot(avg_score_list)
+plt.xlabel('episodes')
+plt.ylabel('ave rewards')
 plt.savefig(f'{super_agent.full_path}/avgScore.jpg')
 plt.show()
 
-
+plt.figure()
 plt.plot(avg_cosharing_hist)
+plt.xlabel('episodes')
+plt.ylabel('coshare score')
 plt.savefig(f'{super_agent.full_path}/avgCosharing.jpg')
 
+plt.figure()
 plt.plot(avg_rewardAgent_2_hist)
+plt.xlabel('episodes')
+plt.ylabel('agent2 rewards')
 plt.savefig(f'{super_agent.full_path}/avgRewardAgent2.jpg')
 
-
+plt.figure()
 plt.scatter(avg_cosharing_hist, avg_rewardAgent_2_hist)
+plt.xlabel('cosharing score')
+plt.ylabel('agent2 reward')
 plt.savefig(f'{super_agent.full_path}/avgShareReward.jpg')
