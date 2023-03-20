@@ -29,4 +29,9 @@ source activate sumo/bin/activate
 pip install -r requirements.txt
 ```
 
+5. Define `SUMO_HOME` to your bashrc file. If you are using a different shell, edit this accordingly. If you choose to install sumo via other means, also change the `SUMO_HOME` location.
+```
+echo  'export SUMO_HOME=$(python -m site --user-site)/sumo' >> ~/.bashrc
+export SUMO_HOME=$(python -m site --user-site)/sumo
+```
 *NOTE:* You must repeat step 1 and 3 when running code on Euler. 
