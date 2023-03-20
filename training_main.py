@@ -53,6 +53,11 @@ super_agent = SuperAgent(env)
 scores = []
 score_history = []
 avg_score_list = []
+cosharing_hist = []
+rewardAgent_2_hist = []
+avg_cosharing_hist = []
+avg_rewardAgent_2_hist = []
+
 PRINT_INTERVAL = 101
 epsilon = 0
 evaluation = True
@@ -110,6 +115,8 @@ with open(trainResultFilePath, 'w', newline='') as file:
             # score += sum(reward)
             score += reward[0]
             score_history.append(score)
+            cosharing_hist.append(cosharing)
+            rewardAgent_2_hist.append(rewardAgent_2)
             step += 1
             if step >= MAX_STEPS:
                 break
@@ -128,6 +135,9 @@ with open(trainResultFilePath, 'w', newline='') as file:
         # average of last 100 scores
         avg_score = np.mean(score_history[-100:])
         avg_score_list.append(avg_score)
+        avg_cosharing_hist.append(np.mean(cosharing_hist[-100:]))
+        avg_rewardAgent_2_hist.append(np.mean(rewardAgent_2_hist[-100:]))
+
         if n_game % PRINT_INTERVAL == 0 and n_game > 0:
             print('episode', n_game, 'average score {:.1f}'.format(avg_score))
 
@@ -159,13 +169,24 @@ with open(trainResultFilePath, 'w', newline='') as file:
                 
         if (n_game + 1) % SAVE_FREQUENCY == 0:
             print("saving weights and replay buffer...")
-            super_agent.save(env.pid)
+            super_agent.save()
             print("saved")
     
 
 
-plot_scores([scores], ['ou'], save_as='results/normal.png')
+plot_scores([scores], ['ou'], save_as=f'{super_agent.full_path}/normal.png')
 
 plt.plot(avg_score_list)
-plt.savefig('results/avgScore.jpg')
+plt.savefig(f'{super_agent.full_path}/avgScore.jpg')
 plt.show()
+
+
+plt.plot(avg_cosharing_hist)
+plt.savefig(f'{super_agent.full_path}/avgCosharing.jpg')
+
+plt.plot(avg_rewardAgent_2_hist)
+plt.savefig(f'{super_agent.full_path}/avgRewardAgent2.jpg')
+
+
+plt.scatter(avg_cosharing_hist, avg_rewardAgent_2_hist)
+plt.savefig(f'{super_agent.full_path}/avgShareReward.jpg')

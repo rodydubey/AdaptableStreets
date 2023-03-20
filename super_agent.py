@@ -16,7 +16,9 @@ class SuperAgent:
         self.replay_buffer = ReplayBuffer(env)
         self.n_agents = len(env.agents)
         self.agents = [Agent(env, agent) for agent in range(self.n_agents)]
-        
+        date_now = time.strftime("%Y%m%d%H%M")
+        self.full_path = f"{self.path_save}/save_agent_{date_now}_{env.pid}"
+
     def get_actions(self, agents_states,epsilon,evaluation):
         list_actions = [self.agents[index].get_actions(agents_states[index],epsilon,evaluation) for index in range(self.n_agents)]
         # list_actions = []
@@ -28,9 +30,8 @@ class SuperAgent:
         #     list_actions.append(act)
         return list_actions
     
-    def save(self, pid):
-        date_now = time.strftime("%Y%m%d%H%M")
-        full_path = f"{self.path_save}/save_agent_{date_now}_{pid}"
+    def save(self):
+        full_path = self.full_path
         if not os.path.isdir(full_path):
             os.makedirs(full_path)
         
