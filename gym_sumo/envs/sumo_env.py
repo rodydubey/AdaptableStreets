@@ -3,7 +3,6 @@ from gym import spaces
 from gym.utils import seeding
 try:
 	import libsumo as traci
-	# import traci
 except:
 	import traci
 from gym import spaces
@@ -734,6 +733,7 @@ class SUMOEnv(Env):
 		h_p_p = 0
 		bikeList = []
 		pedList = []
+		
 		allVehicles = traci.lane.getLastStepVehicleIDs(laneID)			
 		if len(allVehicles) > 1:
 			for veh in allVehicles:
@@ -743,30 +743,33 @@ class SUMOEnv(Env):
 					bikeList.append(veh)
 				elif vehID[0]=="0":
 					pedList.append(veh)
-		for bike in bikeList:
-			pos_bike_x,pos_bike_y = traci.vehicle.getPosition(bike)
-			# pos_bike_y = traci.vehicle.getPosition(bike)
-			for bb in bikeList:
+
+		pos_bikes = [(traci.vehicle.getPosition(bike)) for bike in bikeList]
+		pos_peds = [(traci.vehicle.getPosition(ped)) for ped in pedList]
+
+		for bike, pos_bike in enumerate(pos_bikes):
+			pos_bike_x,pos_bike_y = pos_bike
+			for bb, pos_bb in enumerate(pos_bikes):
 				if bike != bb:
-					pos_bb_x,pos_bb_y = traci.vehicle.getPosition(bb)
+					pos_bb_x,pos_bb_y = pos_bb
 
 					distance = traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_bb_x,pos_bb_y)
 					if distance < 1:
 						h_b_b +=1
-		for bike in bikeList:
-			pos_bike_x,pos_bike_y = traci.vehicle.getPosition(bike)
-			for ped in pedList:
+		for bike, pos_bike in enumerate(pos_bikes):
+			pos_bike_x,pos_bike_y = pos_bike
+			for ped, pos_ped in enumerate(pos_peds):
 				if bike != ped:
-					pos_ped_x,pos_ped_y = traci.vehicle.getPosition(ped)
+					pos_ped_x,pos_ped_y = pos_ped
 
 					distance = traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_ped_x,pos_ped_y)
 					if distance < 1:
 						h_b_p +=1
-		for ped in pedList:
-			pos_ped_x,pos_ped_y = traci.vehicle.getPosition(ped)
-			for pp in pedList:
+		for ped, pos_ped in enumerate(pos_peds):
+			pos_ped_x,pos_ped_y = pos_ped
+			for pp, pos_pp in enumerate(pos_peds):
 				if ped != pp:
-					pos_pp_x,pos_pp_y = traci.vehicle.getPosition(pp)
+					pos_pp_x,pos_pp_y = pos_pp
 
 					distance = traci.simulation.getDistance2D(pos_ped_x,pos_ped_y,pos_pp_x,pos_pp_y)
 					if distance < 1:
@@ -777,59 +780,47 @@ class SUMOEnv(Env):
 		hinderance = 0
 		bikeList = []
 		pedList = []
+		allVehicles = traci.lane.getLastStepVehicleIDs(laneID)
+		if len(allVehicles) > 1:
+			for veh in allVehicles:
+				x = veh.split("_",2)
+				vehID = x[1].split(".",1)
+				if vehID[0]=="1":
+					bikeList.append(veh)
+				elif vehID[0]=="0":
+					pedList.append(veh)
+		pos_bikes = [(traci.vehicle.getPosition(bike)) for bike in bikeList]
+		pos_peds = [(traci.vehicle.getPosition(ped)) for ped in pedList]
+
 		if betweenVehicleType == "bike_bike":
-			allVehicles = traci.lane.getLastStepVehicleIDs(laneID)
-			if len(allVehicles) > 1:
-				for veh in allVehicles:
-					x = veh.split("_",2)
-					vehID = x[1].split(".",1)
-					if vehID[0]=="1":
-						bikeList.append(veh)
-			for bike in bikeList:
-				pos_bike_x,pos_bike_y = traci.vehicle.getPosition(bike)
-				for bb in bikeList:
+			for bike, posxy in enumerate(pos_bikes):
+				pos_bike_x,pos_bike_y = posxy
+				for bb, posxy_bb in enumerate(pos_bikes):
 					if bike != bb:
-						pos_bb_x,pos_bb_y = traci.vehicle.getPosition(bb)
+						pos_bb_x,pos_bb_y = posxy_bb
 						distance = traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_bb_x,pos_bb_y)
 						if distance < 1:
 							hinderance +=1
 
 		elif betweenVehicleType == "bike_ped":
-			allVehicles = traci.lane.getLastStepVehicleIDs(laneID)			
-			if len(allVehicles) > 1:
-				for veh in allVehicles:
-					x = veh.split("_",2)
-					vehID = x[1].split(".",1)
-					if vehID[0]=="1":
-						bikeList.append(veh)
-					elif vehID[0]=="0":
-						pedList.append(veh)
-					
-			for bike in bikeList:
-				pos_bike_x,pos_bike_y = traci.vehicle.getPosition(bike)
-				for ped in pedList:
+			for bike, posxy in enumerate(pos_bikes):
+				pos_bike_x,pos_bike_y = posxy
+				for ped, posxy_ped in enumerate(pos_peds):
 					if bike != ped:
-						pos_ped_x,pos_ped_y = traci.vehicle.getPosition(ped)
-
+						pos_ped_x,pos_ped_y = posxy_ped
 						distance = traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_ped_x,pos_ped_y)
 						if distance < 1:
-							hinderance +=1
+							hinderance +=1		
+
 		elif betweenVehicleType == "ped_ped":
-			allVehicles = traci.lane.getLastStepVehicleIDs(laneID)
-			if len(allVehicles) > 1:
-				for veh in allVehicles:
-					x = veh.split("_",2)
-					vehID = x[1].split(".",1)
-					if vehID[0]=="0":
-						pedList.append(veh)
-			for ped in pedList:
-				pos_ped_x,pos_ped_y = traci.vehicle.getPosition(ped)
-				for pp in pedList:
+			for ped, posxy in enumerate(pos_peds):
+				pos_ped_x,pos_ped_y = posxy
+				for pp, posxy_pp in enumerate(pos_peds):
 					if ped != pp:
-						pos_pp_x,pos_pp_y = traci.vehicle.getPosition(pp)
+						pos_pp_x,pos_pp_y = posxy_pp
 						distance = traci.simulation.getDistance2D(pos_ped_x,pos_ped_y,pos_pp_x,pos_pp_y)
 						if distance < 1:
-							hinderance +=1
+							hinderance +=1	
 
 			hinderance = 0
 		
@@ -1099,23 +1090,8 @@ class SUMOEnv(Env):
 		sumoStartArgs = ['-n', 'gym_sumo/envs/sumo_configs/intersection.net.xml', 
                   		 '-r', 'gym_sumo/envs/sumo_configs/intersection.rou.xml']
 		self.sumoCMD = ["-c", sumoConfig] + self.sumoCMD
-		# Call the sumo simulator
-		# sumoProcess = subprocess.Popen([sumoBinary, "-c", sumoConfig, "--remote-port", str(portnum), \
-		# 	"--time-to-teleport", str(-1), "--collision.check-junctions", str(True), \
-		# 	"--random","--log", "log.txt","--error-log","errorLog.txt","--default.carfollowmodel", "IDM"])
-
-		
-
-		# sumoProcess = subprocess.Popen([sumoBinary] + self.sumoCMD + ["-c", sumoConfig,"--remote-port", str(portnum)])
-
-
-
-		# sumoProcess = subprocess.Popen([sumoBinary, "-c", sumoConfig, "--no-step-log", "true", "--waiting-time-memory", str(3600), "--default.carfollowmodel", "IDM"], stdout=sys.stdout, stderr=sys.stderr)
-
-		# sumoProcess = [sumoBinary, "-c", sumoConfig, "--no-step-log", "true", "--waiting-time-memory", str(3600), "--default.carfollowmodel", "IDM"]
 
 		# Initialize the simulation
-		# traci.init(portnum)
 		traci.start([sumoBinary] + self.sumoCMD + sumoStartArgs)
 		return traci
 
