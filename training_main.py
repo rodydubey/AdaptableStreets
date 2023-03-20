@@ -34,11 +34,13 @@ config = dict(
   env = ENV_NAME
 )
 
-# wandb.init(
-#   project=f"tensorflow2_madddpg_SUMO{ENV_NAME.lower()}",
-#   tags=["MADDPG", "RL"],
-#   config=config,
-# )
+use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, or disabled
+wandb.init(
+  project=f"tensorflow2_madddpg_SUMO{ENV_NAME.lower()}",
+  tags=["MADDPG", "RL"],
+  config=config,
+  mode=use_wandb
+)
 
 parser = ArgumentParser()
 parser.add_argument('--action',help='"train_from_scratch" or "resume_training", or "test"')
@@ -136,10 +138,10 @@ with open(trainResultFilePath, 'w', newline='') as file:
             print('episode', n_game, 'average score {:.1f}'.format(avg_score))
 
         
-        # wandb.log({'Game number': super_agent.replay_buffer.n_games, '# Episodes': super_agent.replay_buffer.buffer_counter, 
-        #             "Average reward": round(np.mean(scores[-10:]), 2), \
-        #                   "Time taken": round(time.time() - start_time, 2),\
-        #                     "Cosharing Counter":coSharingCounter})
+        wandb.log({'Game number': super_agent.replay_buffer.n_games, '# Episodes': super_agent.replay_buffer.buffer_counter, 
+                    "Average reward": round(np.mean(scores[-10:]), 2), \
+                          "Time taken": round(time.time() - start_time, 2),\
+                            "Cosharing Counter":coSharingCounter})
         
         if (n_game+1) % EVALUATION_FREQUENCY == 0 and super_agent.replay_buffer.check_buffer_size():
             actors_state = env.reset("Train")
@@ -157,9 +159,9 @@ with open(trainResultFilePath, 'w', newline='') as file:
                 step += 1
                 if step >= MAX_STEPS:
                     break
-            # wandb.log({'Game number': super_agent.replay_buffer.n_games, 
-            #            '# Episodes': super_agent.replay_buffer.buffer_counter, 
-            #            'Evaluation score': score})
+            wandb.log({'Game number': super_agent.replay_buffer.n_games, 
+                       '# Episodes': super_agent.replay_buffer.buffer_counter, 
+                       'Evaluation score': score})
                 
         if (n_game + 1) % SAVE_FREQUENCY == 0:
             print("saving weights and replay buffer...")
