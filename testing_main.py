@@ -89,7 +89,7 @@ if PATH_LOAD_FOLDER is not None:
        
         
         # while not any(done): 
-        for step in tqdm(range(50)):
+        for step in tqdm(range(30)):
             done = [False for index in range(super_agent.n_agents)]
             actors_state = env.reset(scenario)
             step = 0

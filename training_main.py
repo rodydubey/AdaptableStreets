@@ -43,12 +43,13 @@ parser.add_argument('--action',help='"train_from_scratch" or "resume_training", 
 args = parser.parse_args()
 
 display = 'DISPLAY' in os.environ
-use_gui = False
+use_gui = True
 mode = 'gui' if (use_gui and display) else 'none'
 env = SUMOEnv(mode=mode)
 print(env.action_space)
 print(env.observation_space)
 super_agent = SuperAgent(env)
+super_agent.agents[2].noise_sigma = 0.5 #for binary action
 
 scores = []
 score_history = []
@@ -63,7 +64,7 @@ epsilon = 0
 evaluation = True
 
 #generate training files 
-generateFlowFiles("Train")
+# generateFlowFiles("Train")
 if PATH_LOAD_FOLDER is not None:
     print("Edit configuration file")
     exit()
@@ -91,7 +92,7 @@ with open(trainResultFilePath, 'w', newline='') as file:
         while not any(done):      
             # print("Epsilon :" + str(epsilon))
             actors_action = super_agent.get_actions([actors_state[index][None, :] for index in range(super_agent.n_agents)],epsilon,evaluation)
-            
+            actors_action[2] = np.round(actors_action[2])
             actors_next_state, reward, done, info = env.step(actors_action)
 
             carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
@@ -106,6 +107,7 @@ with open(trainResultFilePath, 'w', newline='') as file:
             state = np.concatenate(actors_state)
             next_state = np.concatenate(actors_next_state)
             
+
             super_agent.replay_buffer.add_record(actors_state, actors_next_state, actors_action, state, next_state, reward, done)
             
             actors_state = actors_next_state

@@ -52,7 +52,8 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid):
             pedLaneWidth_agent_1 = float((1-beta)*remainderRoad_0)
 
         elif key == "agent 2":
-            coShare = np.round(float(value))     
+            coShare = np.round(float(value))
+            print(coShare)     
             # coShare = random.uniform(0.1, 0.9)            
             
         
