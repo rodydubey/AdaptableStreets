@@ -49,6 +49,7 @@ env = SUMOEnv(mode=mode)
 print(env.action_space)
 print(env.observation_space)
 super_agent = SuperAgent(env)
+env.shared_reward = True
 
 scores = []
 score_history = []
@@ -91,7 +92,7 @@ with open(trainResultFilePath, 'w', newline='') as file:
         while not any(done):      
             # print("Epsilon :" + str(epsilon))
             actors_action = super_agent.get_actions([actors_state[index][None, :] for index in range(super_agent.n_agents)],epsilon,evaluation)
-            
+            print("actors action", actors_action)
             actors_next_state, reward, done, info = env.step(actors_action)
 
             carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \

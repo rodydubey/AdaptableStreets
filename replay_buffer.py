@@ -16,8 +16,8 @@ class ReplayBuffer():
         self.n_agents = env.n
         self.list_actors_dimension = [env.observation_space[index].shape[0] for index in range(self.n_agents)]
         self.critic_dimension = sum(self.list_actors_dimension)        
-        # self.list_actor_n_actions = [env.action_space[index].n for index in range(self.n_agents)]
-        self.list_actor_n_actions = [env.action_space[index].shape[0] for index in range(self.n_agents)]
+        self.list_actor_n_actions = [env.action_space[index].n for index in range(self.n_agents)]
+        # self.list_actor_n_actions = [env.action_space[index].shape[0] for index in range(self.n_agents)]
         
         self.states = np.zeros((self.buffer_capacity, self.critic_dimension))
         self.rewards = np.zeros((self.buffer_capacity, self.n_agents))

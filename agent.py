@@ -38,15 +38,16 @@ class OUNoise:
         return self.state
 
 class Agent:
-    def __init__(self, env, n_agent, actor_lr=ACTOR_LR, critic_lr=CRITIC_LR, gamma=GAMMA, tau=TAU):
+    def __init__(self, env, n_agent, actor_lr=ACTOR_LR, critic_lr=CRITIC_LR, gamma=GAMMA, tau=TAU, noise_sigma=0.15):
         
         self.gamma = gamma
         self.tau = tau
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
-        
+        self.noise_sigma = noise_sigma
+
         self.actor_dims = env.observation_space[n_agent].shape[0]
-        self.n_actions = env.action_space[n_agent].shape[0] #for discreet action it was .n
+        self.n_actions = env.action_space[n_agent].n #for discreet action it was .n
         
         self.agent_name = "agent_number_{}".format(n_agent)
         
@@ -87,7 +88,7 @@ class Agent:
         # noise = tf.random.uniform(shape=[self.n_actions])
         # ou_noise = OUNoise(1)
         # noise = ou_noise.sample()
-        normal_scalar = 0.15
+        normal_scalar = self.noise_sigma
         noise_uniform = np.random.randn(1) * normal_scalar
         actions = self.actor(actor_states)
         # print(actions)
@@ -97,8 +98,12 @@ class Agent:
             else:
                 print("exploitation")
         # ou_noise.reset() 
-        # actions = actions + noise_uniform       
-        actions = np.clip(actions.numpy()[0],0.1,0.9)
+        # actions = actions + noise_uniform   
+        if self.n_actions==2:
+            actions = actions.numpy()[0]
+            # actions = np.array(np.argmax(actions))
+        else:    
+            actions = np.clip(actions.numpy()[0],0.1,0.9)
         return actions
     
     def save(self, path_save):

@@ -125,9 +125,13 @@ class SUMOEnv(Env):
 		# configure spaces
 		self.action_space = []
 		self.observation_space = []
-		for agent in self.agents:
-			self.action_space.append(spaces.Box(low=0, high=+1, shape=(1,))) # alpha value
-			# self.action_space.append(spaces.Discrete(self._num_actions))
+		for idx_agent, agent in enumerate(self.agents):
+			if idx_agent==2:
+				act_space = 2
+			else:
+				act_space = 1
+				# self.action_space.append(spaces.Box(low=0, high=+1, shape=(act_space,))) # alpha value
+			self.action_space.append(spaces.Discrete(act_space))
 			# observation space
 			self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation,)))
 			# if agent.name == "agent 0":
@@ -211,18 +215,29 @@ class SUMOEnv(Env):
 				print("Agent 1 observation out of bound")
 		
 
-		elif agent.name == "agent 2": 
-			if cosharing:
-				state[0] = 1 #flag for cosharing on or off
-				state[1] = self._total_hinderance_bike_ped/self.action_steps
-				state[2] = self._total_hinderance_ped_ped/self.action_steps
-				state[3] = self._total_hinderance_bike_bike/self.action_steps
-			else:
+		elif agent.name == "agent 2":
+			state[0] = cosharing*1.
+			state[1] = nLaneWidthCar
+			state[2] = self._total_mean_speed_bike/self.action_steps
+			state[3] = self._total_mean_speed_ped/self.action_steps
 				
-				state[0] = 0 #flag for cosharing on or off
-				state[1] = self._total_hinderance_bike_ped/self.action_steps
-				state[2] = self._total_hinderance_ped_ped/self.action_steps
-				state[3] = self._total_hinderance_bike_bike/self.action_steps
+			# # else:
+			# # 	state[0] = nLaneWidthBike
+			# # 	state[1] = nLaneWidthPed				
+			# # 	state[2] = self._total_occupancy_bike_Lane/self.action_steps 		
+			# # 	state[3] = self._total_occupancy_ped_Lane/self.action_steps
+
+			# if cosharing:
+			# 	state[0] = 1 #flag for cosharing on or off
+			# 	state[1] = self._total_hinderance_bike_ped/self.action_steps
+			# 	state[2] = self._total_hinderance_ped_ped/self.action_steps
+			# 	state[3] = self._total_hinderance_bike_bike/self.action_steps
+			# else:
+				
+			# state[0] = cosharing*1 #flag for cosharing on or off
+			# state[1] = self._total_hinderance_bike_ped/self.action_steps
+			# state[2] = self._total_hinderance_ped_ped/self.action_steps
+			# state[3] = self._total_hinderance_bike_bike/self.action_steps
 			if state[1] == 1 or state[2] == 1:
 				print("Agent 2 observation out of bound")
 
@@ -550,19 +565,26 @@ class SUMOEnv(Env):
 			levelOfServiceThreshold_A = 5
 			levelOfServiceThreshold_B = 10
 			reward = 0.5
-			self.reward_agent_2 = reward
 			if cosharing:
 				if self._levelOfService > levelOfServiceThreshold_A:
 					reward = -reward
 				elif self._levelOfService < levelOfServiceThreshold_A:
 					reward = +reward
-				
 			else:
 				if (self._levelOfService) > levelOfServiceThreshold_A:
 					reward = +reward
 				elif (self._levelOfService) < levelOfServiceThreshold_A:
 					reward = -reward
 
+			# if cosharing == True:
+			# 	reward = -self._total_occupancy_ped_Lane*10/(self.action_steps) # as ped lane will count both waiting bikes and peds since the ped lane is coshared and bike lane width = 0
+			# else:
+			# 	# reward = self._total_count_waiting_ped/(self.action_steps*10) + self._total_count_waiting_bike/(self.action_steps*10)
+			# 	reward_occupancy_bike = self._total_occupancy_bike_Lane/self.action_steps
+			# 	reward_occupancy_ped = self._total_occupancy_ped_Lane/self.action_steps
+			# 	# print("bike + ped stopped: " + str(reward))
+			# 	reward = -((reward_occupancy_bike+reward_occupancy_ped)/2)*10
+				
 			# if cosharing == True:
 			# 	# positive_reward_cosharing = +0.25
 				
@@ -576,7 +598,8 @@ class SUMOEnv(Env):
 				
 			# 	# print("agent 2 reward: " + str(reward))
 			# # collisionCount = self._collision_count_bike/self.action_steps + self._collision_count_ped/self.action_steps
-			
+			self.reward_agent_2 = reward
+
 
 				
 		return reward
@@ -696,7 +719,7 @@ class SUMOEnv(Env):
 			# self._total_unique_ped_count += self.getUniquePedCount()
 			self._unique_ped_count_list.extend(self.traci.lane.getLastStepVehicleIDs('E0_0'))
 			self._unique_bike_count_list.extend(self.traci.lane.getLastStepVehicleIDs('E0_1'))
-			self._total_occupancy_bike_Lane += 0
+			self._total_occupancy_bike_Lane += self.traci.lane.getLastStepOccupancy('E0_1')
 			# Count total occupancy of ped lane in percentage
 			self._total_occupancy_ped_Lane += self.traci.lane.getLastStepOccupancy('E0_0')/laneWidthPed
 
@@ -1079,7 +1102,8 @@ class SUMOEnv(Env):
 		# 				 "--random","-W","--default.carfollowmodel", "IDM","--no-step-log"]
 		self.sumoCMD = ["--time-to-teleport.disconnected",str(1),"--ignore-route-errors","--device.rerouting.probability","1","--device.rerouting.period","1",
 						"--pedestrian.striping.dawdling","0.5","--collision.check-junctions", str(True),"--collision.mingap-factor","0","--collision.action", "warn",
-						 "--seed", "42", "-W","--default.carfollowmodel", "IDM","--no-step-log","--statistic-output","output.xml"]
+						 "--seed", "42", "-W","--default.carfollowmodel", "IDM","--no-step-log","--statistic-output","output.xml",
+						 "--threads", "4"]
 		if withGUI:
 			sumoBinary = checkBinary('sumo-gui')
 			self.sumoCMD += ["--start", "--quit-on-end"]
