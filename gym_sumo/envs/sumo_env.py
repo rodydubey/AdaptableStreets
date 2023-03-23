@@ -8,7 +8,7 @@ from sumolib import checkBinary
 import os, sys
 sys.path.append('../') #allows loading of agent.py
 from agent import Agent
-from gym_sumo.envs.adapt_network import adaptNetwork
+from gym_sumo.envs.adapt_network import adaptNetwork, carLane_width_actions, bikeLane_width_actions
 from gym_sumo.envs.adapt_route_file import adaptRouteFile
 import xml.etree.ElementTree as ET
 import math
@@ -125,7 +125,7 @@ class SUMOEnv(Env):
 		
 		# configure spaces
 		self._num_observation = [len(self.getState(f'agent {i}')) for i in range(self.n)]
-		self._num_actions = [2,2,2]
+		self._num_actions = [len(carLane_width_actions), len(bikeLane_width_actions),2]
 		self.action_space = []
 		self.observation_space = []
 		for i in range(self.n):
