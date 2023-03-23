@@ -110,8 +110,7 @@ if __name__ == "__main__":
         writer.writerow(['Car_Flow_Rate','Bike_Flow_Rate','Ped_Flow_Rate','Car_Lane_Width','Bike_Lane_Width','Ped_Lane_Width','Co_Sharing','Total_mean_speed_car','Total_mean_speed_bike','Total_mean_speed_ped','Total_Waiting_car_count','Total_Waiting_bike_count','Total_Waiting_ped_count','Total_unique_car_count','Total_unique_bike_count','Total_unique_ped_count', \
                 'Total_occupancy_car_Lane','Total_occupancy_bike_Lane','Total_occupancy_ped_Lane','Collision_count_bike','Collision_count_ped','total_density_bike_lane','total_density_ped_lane','total_density_car_lane','RewardAgent_0', 'RewardAgent_1','RewardAgent_2','Hinderance_bb','Hinderance_bp','Hinderance_pp','LevelOfService'])
 
-        while episode < max_episodes:
-            episode += 1
+        for episode in tqdm(range(max_episodes)):
             total_reward = 0
             terminal = False
             step = 0
