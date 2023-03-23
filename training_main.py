@@ -175,6 +175,7 @@ if __name__ == "__main__":
             # update, update more if episode is longer, else less
             if episode > 10:
                 for _ in range(step):
+                    print(f'Training for ep: {episode}\tstep{step}')
                     maddpg.update()
 
             # show reward
