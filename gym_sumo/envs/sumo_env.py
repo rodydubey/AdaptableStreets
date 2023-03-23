@@ -1,11 +1,6 @@
 from gym import Env
 from gym import spaces
 from gym.utils import seeding
-try:
-	import libsumo as traci
-	# import traci
-except:
-	import traci
 from gym import spaces
 import numpy as np
 import math
@@ -33,7 +28,7 @@ class SUMOEnv(Env):
 		np.random.seed(42)
 		self.counter = 2
 		self.withGUI = mode=='gui'
-		self.traci = self.initSimulator(True,self.pid)
+		self.traci = self.initSimulator(self.withGUI, self.pid)
 		self._sumo_step = 0
 		self._episode = 0
 		self._flag = True       
@@ -166,7 +161,7 @@ class SUMOEnv(Env):
 		#E0 is for agent 0 and 1, #-E0 is for agent 2 and 3, #E1 is for agent 4 and 5, #-E1 is for agent 6 and 7
 		#E2 is for agent 8 and 9, #-E2 is for agent 10 and 11, #E3 is for agent 12 and 13, #-E3 is for agent 14 and 15
 
-		laneVehicleAllowedType =traci.lane.getAllowed('E0_0')
+		laneVehicleAllowedType = self.traci.lane.getAllowed('E0_0')
 		if 'bicycle' in laneVehicleAllowedType:
 			cosharing = True
 		else:
@@ -291,17 +286,17 @@ class SUMOEnv(Env):
 		Retrieve the waiting time of every car in the incoming roads
 		"""
 
-		# car_list = traci.vehicle.getIDList()
-		nCars= traci.lane.getLastStepVehicleIDs(laneID)
+		# car_list = self.traci.vehicle.getIDList()
+		nCars= self.traci.lane.getLastStepVehicleIDs(laneID)
 		waiting_times = {}
 		avg_waiting_time = 0
 		if len(nCars) > 0:
 			for car_id in nCars:
-				wait_time = traci.vehicle.getAccumulatedWaitingTime(car_id)
+				wait_time = self.traci.vehicle.getAccumulatedWaitingTime(car_id)
 				waiting_times[car_id] = wait_time
 				
 			avg_waiting_time = sum(waiting_times.values())/len(nCars)
-			temp_total_wait_time = traci.lane.getWaitingTime(laneID)
+			temp_total_wait_time = self.traci.lane.getWaitingTime(laneID)
 			# print(total_waiting_time)
 			# print(temp_total_wait_time)
 		
@@ -428,9 +423,9 @@ class SUMOEnv(Env):
 			print(self._routeFileName)
 		
 		obs_n = []	
-		# traci.load(['-n', 'environment/intersection.net.xml', '-r', self._routeFileName, "--start"]) # should we keep the previous vehicle
+		# self.traci.load(['-n', 'environment/intersection.net.xml', '-r', self._routeFileName, "--start"]) # should we keep the previous vehicle
 		# if self.firstTimeFlag:
-		traci.load(self.sumoCMD + ['-n', 'environment/intersection.net.xml', '-r', self._routeFileName])
+		self.traci.load(self.sumoCMD + ['-n', 'environment/intersection.net.xml', '-r', self._routeFileName])
 			# self.firstTimeFlag = False
 		# else:
 		# 	traci.load(self.sumoCMD + ['-n', 'environment/intersection2.net.xml', '-r', self._routeFileName])
@@ -465,10 +460,10 @@ class SUMOEnv(Env):
 		if len(allVehicles) > 1:
 			lastMaxPos = 60
 			for veh in allVehicles:
-				speed = traci.vehicle.getSpeed(veh)
-				pos_p_x = traci.vehicle.getPosition(veh)[0]
+				speed = self.traci.vehicle.getSpeed(veh)
+				pos_p_x = self.traci.vehicle.getPosition(veh)[0]
 				if speed < 0.1 and pos_p_x > -35:					
-					# pos_p_y = traci.vehicle.getPosition(veh)[1]
+					# pos_p_y = self.traci.vehicle.getPosition(veh)[1]
 					queueCount +=1
 					if pos_p_x < lastMaxPos:
 						lastMaxPos = pos_p_x
@@ -490,8 +485,8 @@ class SUMOEnv(Env):
 			pos_p_x = []
 			pos_p_y = []
 			for ped in allPeds:
-				pos_p_x.append(traci.vehicle.getPosition(ped)[0])
-				pos_p_y.append(traci.vehicle.getPosition(ped)[1])
+				pos_p_x.append(self.traci.vehicle.getPosition(ped)[0])
+				pos_p_y.append(self.traci.vehicle.getPosition(ped)[1])
 			
 			points = list(zip(pos_p_x,pos_p_y))
 			distances = [math.dist(p1, p2) for p1, p2 in combinations(points, 2)]
@@ -501,9 +496,9 @@ class SUMOEnv(Env):
 			return 0
 
 	def getDensityOfALaneID(self,laneID):
-		num = traci.lane.getLastStepVehicleNumber(laneID)
-		length = traci.lane.getLength(laneID)
-		width = traci.lane.getWidth(laneID)
+		num = self.traci.lane.getLastStepVehicleNumber(laneID)
+		length = self.traci.lane.getLength(laneID)
+		width = self.traci.lane.getWidth(laneID)
 		if width == 0:
 			return 0
 		density = num / (length * width)
@@ -518,8 +513,8 @@ class SUMOEnv(Env):
 			pos_p_x = []
 			pos_p_y = []
 			for bike in allBikes:
-				pos_p_x.append(traci.vehicle.getPosition(bike)[0])
-				pos_p_y.append(traci.vehicle.getPosition(bike)[1])
+				pos_p_x.append(self.traci.vehicle.getPosition(bike)[0])
+				pos_p_y.append(self.traci.vehicle.getPosition(bike)[1])
 			
 			points = list(zip(pos_p_x,pos_p_y))
 			distances = [math.dist(p1, p2) for p1, p2 in combinations(points, 2)]
@@ -534,7 +529,7 @@ class SUMOEnv(Env):
 		# defaultCarLength = 5
 		# defaultPedLength = 0.215
 		# defaultBikeLength = 1.6
-		laneVehicleAllowedType =traci.lane.getAllowed('E0_0')
+		laneVehicleAllowedType = self.traci.lane.getAllowed('E0_0')
 		cosharing = False
 		if 'bicycle' in laneVehicleAllowedType: 
 			cosharing = True
@@ -676,7 +671,7 @@ class SUMOEnv(Env):
 		return num_values
 
 	def getAllEmergencyBrakingCount(self):		
-		allBrakingVehicleIDList = traci.simulation.getEmergencyStoppingVehiclesIDList()
+		allBrakingVehicleIDList = self.traci.simulation.getEmergencyStoppingVehiclesIDList()
 		bikeBrakeCounter = 0
 		pedBrakeCounter = 0
 		carBrakeCounter = 0
@@ -693,7 +688,7 @@ class SUMOEnv(Env):
 
 		return carBrakeCounter,bikeBrakeCounter,pedBrakeCounter
 	def getAllCollisionCount(self):		
-		allCollidingVehicleIDList = traci.simulation.getCollidingVehiclesIDList()
+		allCollidingVehicleIDList = self.traci.simulation.getCollidingVehiclesIDList()
 		bikeCollisionCounter = 0
 		pedCollisionCounter = 0
 		carCollisionCounter = 0
@@ -714,7 +709,7 @@ class SUMOEnv(Env):
 		laneWidthCar = self.traci.lane.getWidth('E0_2')
 		laneWidthBike = self.traci.lane.getWidth('E0_1')
 		laneWidthPed = self.traci.lane.getWidth('E0_0')
-		laneVehicleAllowedType =traci.lane.getAllowed('E0_0')
+		laneVehicleAllowedType = self.traci.lane.getAllowed('E0_0')
 		if 'bicycle' in laneVehicleAllowedType:
 			cosharing = True
 		else:
@@ -797,7 +792,7 @@ class SUMOEnv(Env):
 		bikeList = []
 		pedList = []
 		
-		allVehicles = traci.lane.getLastStepVehicleIDs(laneID)			
+		allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)			
 		if len(allVehicles) > 1:
 			for veh in allVehicles:
 				x = veh.split("_",2)
@@ -807,8 +802,8 @@ class SUMOEnv(Env):
 				elif vehID[0]=="0":
 					pedList.append(veh)
 
-		pos_bikes = [(traci.vehicle.getPosition(bike)) for bike in bikeList]
-		pos_peds = [(traci.vehicle.getPosition(ped)) for ped in pedList]
+		pos_bikes = [(self.traci.vehicle.getPosition(bike)) for bike in bikeList]
+		pos_peds = [(self.traci.vehicle.getPosition(ped)) for ped in pedList]
 
 		for bike, pos_bike in enumerate(pos_bikes):
 			pos_bike_x,pos_bike_y = pos_bike
@@ -816,7 +811,7 @@ class SUMOEnv(Env):
 				if bike != bb:
 					pos_bb_x,pos_bb_y = pos_bb
 
-					distance = traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_bb_x,pos_bb_y)
+					distance = self.traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_bb_x,pos_bb_y)
 					if distance < 1:
 						h_b_b +=1
 		for bike, pos_bike in enumerate(pos_bikes):
@@ -825,7 +820,7 @@ class SUMOEnv(Env):
 				if bike != ped:
 					pos_ped_x,pos_ped_y = pos_ped
 
-					distance = traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_ped_x,pos_ped_y)
+					distance = self.traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_ped_x,pos_ped_y)
 					if distance < 1:
 						h_b_p +=1
 		for ped, pos_ped in enumerate(pos_peds):
@@ -834,7 +829,7 @@ class SUMOEnv(Env):
 				if ped != pp:
 					pos_pp_x,pos_pp_y = pos_pp
 
-					distance = traci.simulation.getDistance2D(pos_ped_x,pos_ped_y,pos_pp_x,pos_pp_y)
+					distance = self.traci.simulation.getDistance2D(pos_ped_x,pos_ped_y,pos_pp_x,pos_pp_y)
 					if distance < 1:
 						h_p_p +=1
 		return h_b_b,h_b_p,h_p_p
@@ -843,7 +838,7 @@ class SUMOEnv(Env):
 		hinderance = 0
 		bikeList = []
 		pedList = []
-		allVehicles = traci.lane.getLastStepVehicleIDs(laneID)
+		allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)
 		if len(allVehicles) > 1:
 			for veh in allVehicles:
 				x = veh.split("_",2)
@@ -852,8 +847,8 @@ class SUMOEnv(Env):
 					bikeList.append(veh)
 				elif vehID[0]=="0":
 					pedList.append(veh)
-		pos_bikes = [(traci.vehicle.getPosition(bike)) for bike in bikeList]
-		pos_peds = [(traci.vehicle.getPosition(ped)) for ped in pedList]
+		pos_bikes = [(self.traci.vehicle.getPosition(bike)) for bike in bikeList]
+		pos_peds = [(self.traci.vehicle.getPosition(ped)) for ped in pedList]
 
 		if betweenVehicleType == "bike_bike":
 			for bike, posxy in enumerate(pos_bikes):
@@ -861,7 +856,7 @@ class SUMOEnv(Env):
 				for bb, posxy_bb in enumerate(pos_bikes):
 					if bike != bb:
 						pos_bb_x,pos_bb_y = posxy_bb
-						distance = traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_bb_x,pos_bb_y)
+						distance = self.traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_bb_x,pos_bb_y)
 						if distance < 1:
 							hinderance +=1
 
@@ -871,7 +866,7 @@ class SUMOEnv(Env):
 				for ped, posxy_ped in enumerate(pos_peds):
 					if bike != ped:
 						pos_ped_x,pos_ped_y = posxy_ped
-						distance = traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_ped_x,pos_ped_y)
+						distance = self.traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_ped_x,pos_ped_y)
 						if distance < 1:
 							hinderance +=1		
 
@@ -881,7 +876,7 @@ class SUMOEnv(Env):
 				for pp, posxy_pp in enumerate(pos_peds):
 					if ped != pp:
 						pos_pp_x,pos_pp_y = posxy_pp
-						distance = traci.simulation.getDistance2D(pos_ped_x,pos_ped_y,pos_pp_x,pos_pp_y)
+						distance = self.traci.simulation.getDistance2D(pos_ped_x,pos_ped_y,pos_pp_x,pos_pp_y)
 						if distance < 1:
 							hinderance +=1	
 
@@ -900,7 +895,7 @@ class SUMOEnv(Env):
 			self.w_hinderance_b_p = 0.2
 			self.w_hinderance_p_p = 0.1
 			laneID = 'E0_0'
-			laneWidth = traci.lane.getWidth(laneID)
+			laneWidth = self.traci.lane.getWidth(laneID)
 			los = -self.w_lane_width*laneWidth + self.w_total_occupancy*self._total_occupancy_ped_Lane  + self.w_hinderance_b_b*self._total_hinderance_bike_bike + \
 				 self.w_hinderance_b_p*self._total_hinderance_bike_ped + self.w_hinderance_p_p*self._total_hinderance_ped_ped
 
@@ -910,8 +905,8 @@ class SUMOEnv(Env):
 			self.w_hinderance_p_p = 0.2
 			pedLaneID = 'E0_0'
 			bikeLaneID = 'E0_1'
-			pedLaneWidth = traci.lane.getWidth(pedLaneID)
-			bikeLaneWidth = traci.lane.getWidth(bikeLaneID)
+			pedLaneWidth = self.traci.lane.getWidth(pedLaneID)
+			bikeLaneWidth = self.traci.lane.getWidth(bikeLaneID)
 			los_ped_Lane = -self.w_lane_width*pedLaneWidth + self.w_total_occupancy*self._total_occupancy_ped_Lane  + self.w_hinderance_p_p*self._total_hinderance_ped_ped
 			los_bike_Lane = -self.w_lane_width*bikeLaneWidth + self.w_total_occupancy*self._total_occupancy_bike_Lane  + self.w_hinderance_b_b*self._total_hinderance_bike_bike
 			los = (los_ped_Lane + los_bike_Lane)/2
@@ -931,14 +926,14 @@ class SUMOEnv(Env):
 		
 		self._sumo_step = 0
 		# adaptRouteFile(self._slotId, self.pid)
-		# traci.load(self.sumoCMD + ['-n', 'environment/intersection.net.xml', '-r', self._routeFileName])
+		# self.traci.load(self.sumoCMD + ['-n', 'environment/intersection.net.xml', '-r', self._routeFileName])
 		#simulating a warm period of N=self.action_steps  and then recording the state, action, reward tuple. 
-		bikeLaneWidth = traci.lane.getWidth('E0_1')
-		pedlLaneWidth = traci.lane.getWidth('E0_0')
-		carLaneWidth = traci.lane.getWidth('E0_2')
+		bikeLaneWidth = self.traci.lane.getWidth('E0_1')
+		pedlLaneWidth = self.traci.lane.getWidth('E0_0')
+		carLaneWidth = self.traci.lane.getWidth('E0_2')
 		
 		
-		laneVehicleAllowedType =traci.lane.getAllowed('E0_0')
+		laneVehicleAllowedType = self.traci.lane.getAllowed('E0_0')
 		#set action for each agents
 		if actionFlag == True:
 			temp_action_dict = {}
@@ -1100,13 +1095,13 @@ class SUMOEnv(Env):
 	def _set_action(self, actionDict, agent, action_space, time=None):
 		# process action
 		t = 0
-		adaptNetwork(self.base_netfile,actionDict,agent.name,self._routeFileName,self.sumoCMD, self.pid)
+		adaptNetwork(self.base_netfile,actionDict,agent.name,self._routeFileName,self.sumoCMD, self.pid, self.traci)
 		# t = 0
 	def testAnalysisStats(self):
-		bikeLaneWidth = traci.lane.getWidth('E0_1')
-		pedlLaneWidth = traci.lane.getWidth('E0_0')
-		carLaneWidth = traci.lane.getWidth('E0_2')
-		laneVehicleAllowedType =traci.lane.getAllowed('E0_0')
+		bikeLaneWidth = self.traci.lane.getWidth('E0_1')
+		pedlLaneWidth = self.traci.lane.getWidth('E0_0')
+		carLaneWidth = self.traci.lane.getWidth('E0_2')
+		laneVehicleAllowedType = self.traci.lane.getAllowed('E0_0')
 		cosharing = 999
 		if 'bicycle' in laneVehicleAllowedType:
 			cosharing = 1
@@ -1128,6 +1123,13 @@ class SUMOEnv(Env):
 		return self._carQueueLength, self._bikeQueueLength, self._pedQueueLength
 
 	def initSimulator(self,withGUI,portnum):
+		if withGUI:
+			import traci
+		else:
+			try:
+				import libsumo as traci
+			except:
+				import traci
 		"""
 		Configure various parameters of SUMO
 		"""

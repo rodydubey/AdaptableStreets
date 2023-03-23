@@ -1,11 +1,6 @@
 # adaptNetwork.py
 
 import xml.etree.ElementTree as ET
-try:
-	import libsumo as traci
-    # import traci
-except:
-	import traci
 from sumolib import checkBinary
 import os
 import sys
@@ -24,7 +19,7 @@ def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
 #function
-def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid):
+def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid, traci):
     print("Inside AdaptNetwork")
     # parsing directly.
     tree = ET.parse(base_network)
