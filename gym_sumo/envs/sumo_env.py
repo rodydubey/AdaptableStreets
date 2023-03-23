@@ -48,7 +48,7 @@ class SUMOEnv(Env):
 		self._reward_store = []
 		self._cumulative_wait_store = []
 		self._avg_queue_length_store = []
-		self.action_steps = 100
+		self.action_steps = 300
 		self.sumo_running = False
 		self.viewer = None
 		self.firstTimeFlag = True
@@ -910,7 +910,7 @@ class SUMOEnv(Env):
 				cosharing = False
 			while self._sumo_step <= self.action_steps:
 				# advance world state	
-				# self.traci.simulationStep()
+				self.traci.simulationStep()
 				self._sumo_step +=1
 				self.collectObservation()
 			
