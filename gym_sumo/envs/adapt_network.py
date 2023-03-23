@@ -9,8 +9,8 @@ baselineCarLaneWidth = 9.6
 baselinebicycleLaneWidth = 1.5
 baselinePedestrianLaneWidth = 1.5
 totalEdgeWidth = baselineCarLaneWidth + baselinebicycleLaneWidth + baselinePedestrianLaneWidth
-carLane_width_actions = ['6.4','9.6']
-bikeLane_width_actions = ['1','2']
+carLane_width_actions = ['3.2','5.5','7.8','9.6']
+bikeLane_width_actions = ['0.1','0.2','0.3','0.4','0.5','0.6','0.7','0.8','0.9']
 
 netconvert = checkBinary("netconvert")
 sys.path.append(netconvert)
@@ -24,16 +24,17 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid, traci)
     # parsing directly.
     tree = ET.parse(base_network)
     root = tree.getroot()
-
+    remainderLaneLength = 0
     for key, value in actionDict.items():
         if key == "agent 0":
             carLaneWidth = float(carLane_width_actions[value])
+            remainderLaneLength = totalEdgeWidth - carLaneWidth
         elif key == "agent 1":
-            bikeLaneWidth = float(bikeLane_width_actions[value])
+            bikeLaneWidth = float(bikeLane_width_actions[value])*remainderLaneLength
             pedLaneWidth = float(totalEdgeWidth-(carLaneWidth + bikeLaneWidth))
 
         elif key == "agent 2":           
-            coShare = value        
+            coShare = value      
             
         
     # carLaneWidth_agent_0 = 6.2

@@ -1096,7 +1096,7 @@ class SUMOEnv(Env):
 		# 				 "--random","-W","--default.carfollowmodel", "IDM","--no-step-log"]
 		self.sumoCMD = ["--time-to-teleport.disconnected",str(1),"--ignore-route-errors","--device.rerouting.probability","1","--device.rerouting.period","1",
 						"--pedestrian.striping.dawdling","0.5","--collision.check-junctions", str(True),"--collision.mingap-factor","0","--collision.action", "warn",
-						 "--seed", "42", "-W","--default.carfollowmodel", "IDM","--no-step-log","--statistic-output","output.xml"]
+						 "--seed", f"{np.random.randint(69142)}", "-W","--default.carfollowmodel", "IDM","--no-step-log","--statistic-output","output.xml"]
 		if withGUI:
 			sumoBinary = checkBinary('sumo-gui')
 			self.sumoCMD += ["--start", "--quit-on-end"]
