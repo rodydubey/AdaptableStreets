@@ -4,6 +4,7 @@ import os
 import sys
 sys.path.append("../src")
 from config import *
+from utils import get_space_dims
 
 np.random.seed(42)
 class ReplayBuffer():
@@ -14,17 +15,9 @@ class ReplayBuffer():
         self.buffer_counter = 0
         self.n_games = 0
         self.n_agents = env.n
-        self.list_actors_dimension = [env.observation_space[index].shape[0] for index in range(self.n_agents)]
+        self.list_actors_dimension = [get_space_dims(env.observation_space[index]) for index in range(self.n_agents)]
         self.critic_dimension = sum(self.list_actors_dimension)        
-        # self.list_actor_n_actions = [env.action_space[index].n for index in range(self.n_agents)]
-        self.list_actor_n_actions = [env.action_space[index].shape[0] for index in range(self.n_agents)]
-        # actors_action = []
-        # actors_action.append(env.action_space[0].shape[0])
-        # actors_action.append(env.action_space[1].shape[0])
-        # actors_action.append(env.action_space[2].n)
-        # self.list_actor_n_actions = [env.action_space[index].n for index in range(self.n_agents)]
-        # self.list_actor_n_actions = actors_action
-        # self.list_actor_n_actions = [env.action_space[index].shape[0] for index in range(self.n_agents)]
+        self.list_actor_n_actions = [get_space_dims(env.action_space[index]) for index in range(self.n_agents)]
         
         self.states = np.zeros((self.buffer_capacity, self.critic_dimension))
         self.rewards = np.zeros((self.buffer_capacity, self.n_agents))

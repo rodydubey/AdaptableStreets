@@ -86,8 +86,10 @@ class SuperAgent:
             critic_losses = [tf.keras.losses.MSE(targets[index], critic_values[index]) for index in range(self.n_agents)]
             
             actor_losses = [-self.agents[index].critic(states, concat_policy_actions) for index in range(self.n_agents)]
+            # print('L1', actor_losses)
             actor_losses = [tf.math.reduce_mean(actor_losses[index]) for index in range(self.n_agents)]
-        
+            # print('L2', actor_losses)
+
         critic_gradients = [tape.gradient(critic_losses[index], self.agents[index].critic.trainable_variables) for index in range(self.n_agents)]
         actor_gradients = [tape.gradient(actor_losses[index], self.agents[index].actor.trainable_variables) for index in range(self.n_agents)]
         
@@ -95,3 +97,5 @@ class SuperAgent:
             self.agents[index].critic.optimizer.apply_gradients(zip(critic_gradients[index], self.agents[index].critic.trainable_variables))
             self.agents[index].actor.optimizer.apply_gradients(zip(actor_gradients[index], self.agents[index].actor.trainable_variables))
             self.agents[index].update_target_networks(self.agents[index].tau)
+
+        return actor_losses, critic_losses

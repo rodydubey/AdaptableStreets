@@ -6,6 +6,8 @@ import numpy as np
 import math
 from sumolib import checkBinary
 import os, sys
+sys.path.append('../') #allows loading of agent.py
+from agent import Agent
 from gym_sumo.envs.adapt_network import adaptNetwork
 from gym_sumo.envs.adapt_route_file import adaptRouteFile
 import xml.etree.ElementTree as ET
@@ -43,8 +45,6 @@ class SUMOEnv(Env):
 		self._max_steps = 24000
 		self._slot_duration = 1200
 		self._max_slots = 3
-		self._num_observation = 4
-		self._num_actions = 1
 		self._reward_store = []
 		self._cumulative_wait_store = []
 		self._avg_queue_length_store = []
@@ -97,9 +97,6 @@ class SUMOEnv(Env):
 		self._total_hinderance_ped_ped = 0
 		self._levelOfService = 0
 		self._currentReward = []
-		# set required vectorized gym env property
-		self.n = 3
-		self.agents = self.createNAgents() # it is a placeholder agent. Actual agent is in SuperAgent
 		self._lastReward = 0
 		# self.observation = self.reset()
 		self._slotId = 0
@@ -123,20 +120,32 @@ class SUMOEnv(Env):
 		self._bikeFlow = 0
 
 		self._scenario = "Train"
+		# set required vectorized gym env property
+		self.n = 3
+		
 		# configure spaces
+		self._num_observation = [len(self.getState(f'agent {i}')) for i in range(self.n)]
+		self._num_actions = [2,2,2]
 		self.action_space = []
 		self.observation_space = []
-		for idx_agent, agent in enumerate(self.agents):		
-			act_space = 2
-			self.action_space.append(spaces.Discrete(act_space))
+		for i in range(self.n):
+			if self._num_actions[i]==1:
+				self.action_space.append(spaces.Box(low=0, high=+1, shape=(1,))) # alpha value
+			else:
+				self.action_space.append(spaces.Discrete(self._num_actions[i]))
 			# observation space
-			self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation,)))
+			self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation[i],)))
+			# if agent.name == "agent 0":
+			# 	self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation,)))
+			# else:
+			# 	self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation+1,)))
+		self.agents = self.createNAgents()
+		# self.action_space = spaces.Box(low=np.array([0]), high= np.array([+1])) # Beta value 
+		# self.observation_space = spaces.Box(low=0, high=1, shape=(np.shape(self.observation)))
+		# self.observation_space.append(spaces.Box(low=-np.inf, high=+np.inf, shape=(6,), dtype=np.float32))
 
 	def createNAgents(self):
-		agents = [Agent() for i in range(self.n)]
-		for i, agent in enumerate(agents):
-			agent.name = 'agent %d' % i	
-		return agents
+		agents = [Agent(self, i) for i in range(self.n)]
 
 		return agents
 	
@@ -145,11 +154,11 @@ class SUMOEnv(Env):
 	# Edge E0 - Agent 1 and Agent 2
 
 	
-	def getState(self,agent):
+	def getState(self,agent_name):
 		"""
 		Retrieve the state of the network from sumo. 
 		"""
-		state = np.zeros(self._num_observation,dtype=np.float32)
+		# state = np.zeros(self._num_observation[agent_idx],dtype=np.float32)
 		normalizeUniqueVehicleCount = 300
 		laneWidthCar = self.traci.lane.getWidth('E0_2')
 		laneWidthBike = self.traci.lane.getWidth('E0_1')
@@ -163,123 +172,62 @@ class SUMOEnv(Env):
 
 		laneVehicleAllowedType = self.traci.lane.getAllowed('E0_0')
 		if 'bicycle' in laneVehicleAllowedType:
-			cosharing = True
+			cosharing = 1
 		else:
-			cosharing = False
+			cosharing = 0
 
-		if agent.name == "agent 0": # car
-			state[0] = nLaneWidthCar
-			state[1] = nLaneWidthBike + nLaneWidthPed
-			state[2] = self._total_occupancy_car_Lane/self.action_steps			
-			state[3] = self._total_density_car_lane*10/self.action_steps
-			if state[1] > 1 or state[2] > 1 or state[3] > 1:
+		state = []
+		if agent_name == "agent 0": # car
+			state_0 = nLaneWidthCar
+			state_1 = nLaneWidthBike + nLaneWidthPed
+			state_2 = self._total_occupancy_car_Lane*10/self.action_steps			
+			state_3 = self._total_density_car_lane*100/self.action_steps
+			
+			state = [state_0, state_1, state_2, state_3]
+			if state_2 > 1 or state_3 > 1:
 				print("Agent 0 observation out of bound")
 
-			# state[0] = nLaneWidthCar
-			# state[1] = nLaneWidthBike + nLaneWidthPed
-			# state[2] = np.interp(self._total_unique_car_count,[0,normalizeUniqueVehicleCount],[0,1]) # average number of unique cars on the car lane through simulation steps
-			# state[3] = self._total_occupancy_car_Lane/self.action_steps # average occupancy of the car lane through simulation steps. The raw value is in percentage
-			# state[4] = (self._total_occupancy_bike_Lane/self.action_steps + self._total_occupancy_ped_Lane/self.action_steps)/2 # average occupancy of bike plus ped lanes
-			# state[5] = np.interp(self._total_count_waiting_car/self.action_steps,[0,10],[0,1]) # average waiting count of cars on the car lane through simulation steps
-			# if state[2] == 1 or state[3] == 1 or state[4] == 1 or state[5] == 1:
+			# state_0 = nLaneWidthCar
+			# state_1 = nLaneWidthBike + nLaneWidthPed
+			# state_2 = np.interp(self._total_unique_car_count,[0,normalizeUniqueVehicleCount],[0,1]) # average number of unique cars on the car lane through simulation steps
+			# state_3 = self._total_occupancy_car_Lane/self.action_steps # average occupancy of the car lane through simulation steps. The raw value is in percentage
+			# state_4 = (self._total_occupancy_bike_Lane/self.action_steps + self._total_occupancy_ped_Lane/self.action_steps)/2 # average occupancy of bike plus ped lanes
+			# state_5 = np.interp(self._total_count_waiting_car/self.action_steps,[0,10],[0,1]) # average waiting count of cars on the car lane through simulation steps
+			# if state_2 == 1 or state_3 == 1 or state_4 == 1 or state_5 == 1:
 			# 	print("Agent 0 observation out of bound")
 
 
 		
-		elif agent.name == "agent 1": # bike			
-			state[0] = nLaneWidthBike
-			state[1] = nLaneWidthPed				
-			state[2] = self._total_occupancy_bike_Lane/self.action_steps 		
-			state[3] = self._total_occupancy_ped_Lane/self.action_steps
-				
-			if state[1] > 1 or state[2] > 1 or state[3] > 1:
+		if agent_name == "agent 1": # bike
+			state_0 = nLaneWidthBike
+			state_1 = nLaneWidthPed				
+			state_2 = self._total_occupancy_bike_Lane*100/self.action_steps 		
+			state_3 = self._total_occupancy_ped_Lane*100/self.action_steps
+		
+			state = [state_0, state_1, state_2, state_3]
+			if state_2 > 1 or state_3 > 1:
 				print("Agent 1 observation out of bound")
 		
 
-		elif agent.name == "agent 2": 
-			if cosharing:
-				state[0] = 1 #flag for cosharing on or off
-				state[1] = self._total_density_bike_lane/self.action_steps 
-				state[2] = self._total_density_ped_lane/self.action_steps
-				state[3] = self._total_hinderance_bike_ped/self.action_steps
-			else:
-				
-				state[0] = 0 #flag for cosharing on or off
-				state[1] = self._total_density_bike_lane/self.action_steps 
-				state[2] = self._total_density_ped_lane/self.action_steps
-				state[3] = self._total_hinderance_ped_ped/self.action_steps
-			if state[1] > 1 or state[2] > 1 or state[3] > 1:
+		if agent_name == "agent 2": 
+			state_0 = cosharing #flag for cosharing on or off
+			state_7 = np.abs(cosharing-1)
+			state_1 = self._total_hinderance_bike_ped/self.action_steps
+			state_2 = self._total_hinderance_ped_ped/self.action_steps
+			state_3 = self._total_hinderance_bike_bike/self.action_steps
+			state_4 = nLaneWidthBike + nLaneWidthPed
+			state_5 = self._total_occupancy_bike_Lane*100/self.action_steps 		
+			state_6 = self._total_occupancy_ped_Lane*100/self.action_steps
+			state_8 = self._total_density_bike_lane*100/self.action_steps 		
+			state_9 = self._total_density_ped_lane*100/self.action_steps
+
+			state = [state_0, state_7, state_1, state_2, state_3, state_4, state_5, state_6, state_8, state_9]
+			state = [float(self.FlowRateStatsFromRouteFile()[-1])/1200]
+			if state_1 == 1 or state_2 == 1:
 				print("Agent 2 observation out of bound")
 
-		print(state[0],state[1],state[2],state[3])
-		return state
-		# if agent.name == "agent 0": # car
-		# 	state[0] = nLaneWidthCar
-		# 	state[1] = nLaneWidthBike + nLaneWidthPed
-		# 	state[2] = self._total_occupancy_car_Lane/self.action_steps			
-		# 	state[3] = self._total_occupancy_bike_Lane/self.action_steps + self._total_occupancy_ped_Lane/self.action_steps
-		# 	state[4] = self._total_density_car_lane/self.action_steps
-		# 	state[5] = self._total_density_bike_lane/self.action_steps + self._total_density_ped_lane/self.action_steps
-		# 	if state[2] > 1 or state[3] > 1 or state[4] > 1 or state[5] > 1:
-		# 		print("Agent 0 observation out of bound")
-
-		# 	# state[0] = nLaneWidthCar
-		# 	# state[1] = nLaneWidthBike + nLaneWidthPed
-		# 	# state[2] = np.interp(self._total_unique_car_count,[0,normalizeUniqueVehicleCount],[0,1]) # average number of unique cars on the car lane through simulation steps
-		# 	# state[3] = self._total_occupancy_car_Lane/self.action_steps # average occupancy of the car lane through simulation steps. The raw value is in percentage
-		# 	# state[4] = (self._total_occupancy_bike_Lane/self.action_steps + self._total_occupancy_ped_Lane/self.action_steps)/2 # average occupancy of bike plus ped lanes
-		# 	# state[5] = np.interp(self._total_count_waiting_car/self.action_steps,[0,10],[0,1]) # average waiting count of cars on the car lane through simulation steps
-		# 	# if state[2] == 1 or state[3] == 1 or state[4] == 1 or state[5] == 1:
-		# 	# 	print("Agent 0 observation out of bound")
-
-
-		
-		# elif agent.name == "agent 1": # bike
-		# 	if cosharing:
-		# 		state[0] = 0
-		# 		state[1] = nLaneWidthPed
-		# 		state[2] = 0
-		# 		state[3] = self._total_occupancy_ped_Lane/self.action_steps
-		# 		state[4] = self._total_density_ped_lane/self.action_steps
-		# 		state[5] = self._total_density_bike_lane/self.action_steps
-				
-		# 	else:
-		# 		state[0] = nLaneWidthBike
-		# 		state[1] = nLaneWidthPed				
-		# 		state[2] = self._total_occupancy_bike_Lane/self.action_steps 		
-		# 		state[3] = self._total_occupancy_ped_Lane/self.action_steps
-		# 		state[4] = self._total_density_ped_lane/self.action_steps
-		# 		state[5] = self._total_density_bike_lane/self.action_steps
-				
-		# 	if state[2] > 1 or state[3] > 1 or state[4] > 1 or state[5] > 1:
-		# 		print("Agent 1 observation out of bound")
-		
-
-		# elif agent.name == "agent 2": 
-		# 	if self._levelOfService/self.action_steps > 1:
-		# 		los = 1
-		# 	else:
-		# 		los = self._levelOfService/self.action_steps
-		# 	if cosharing:
-		# 		state[0] = 1 #np.interp(self._levelOfService/(self.action_steps*10),[0,2],[0,1]) #flag for cosharing on or off
-		# 		state[1] = self._total_density_ped_lane/self.action_steps
-		# 		state[2] = 0
-		# 		state[3] = los
-		# 		state[4] = nLaneWidthPed
-		# 		state[5] = 0
-		# 	else:
-		# 		state[0] = 0 #np.interp(self._levelOfService/(self.action_steps*10),[0,2],[0,1]) #flag for cosharing on or off
-		# 		state[1] = self._total_density_ped_lane/self.action_steps
-		# 		state[2] = self._total_density_bike_lane/self.action_steps
-		# 		state[3] = los
-		# 		state[4] = nLaneWidthPed
-		# 		state[5] = nLaneWidthBike
-			
-		# 	if state[2] > 1 or state[3] > 1 or state[4] > 1 or state[5] > 1:
-		# 		print("Agent 2 observation out of bound")
-
-		# print(state[0],state[1],state[2],state[3],state[4],state[5])
-		# return state
+		print(state)
+		return np.array(state)
 	
 	def _collect_waiting_times_cars(self,laneID):
 		"""
@@ -448,7 +396,7 @@ class SUMOEnv(Env):
 
 	# get observation for a particular agent
 	def _get_obs(self, agent):
-		return self.getState(agent)
+		return self.getState(f'agent {agent.id}')
 
 	# def _observation(self,agent):
 	# 	return self.getState(agent)
@@ -545,7 +493,7 @@ class SUMOEnv(Env):
 				# print("car stopped: " + str(reward_car_Stopped_count))
 				reward = -(reward_occupancy_car)
 				# print("agent 0 reward: " + str(reward))
-				
+			reward = 0	
 			
 
 		elif agent.name == "agent 1":
@@ -572,7 +520,7 @@ class SUMOEnv(Env):
 					# print("bike + ped stopped: " + str(reward))
 					reward = -((reward_occupancy_bike+reward_occupancy_ped)/2)*10
 					# print("agent 1 reward: " + str(reward))
-		
+			reward = 0
 		
 		elif agent.name == "agent 2":
 			# collisionCount = self._collision_count_bike + self._collision_count_ped
@@ -633,9 +581,14 @@ class SUMOEnv(Env):
 				
 			# 	# print("agent 2 reward: " + str(reward))
 			# # collisionCount = self._collision_count_bike/self.action_steps + self._collision_count_ped/self.action_steps
-			
+			# flowrate = float(self.FlowRateStatsFromRouteFile()[-1])/1200
+			# if flowrate<0.5 and cosharing:
+			# 	reward = 1
+			# else:
+			# 	reward = -1
 
-				
+			self.reward_agent_2 = reward
+
 		return reward
 
 			
@@ -761,11 +714,11 @@ class SUMOEnv(Env):
 			self._collision_count_bike += bikeCollisionCount
 			self._collision_count_ped += pedCollisionCount
 
-			if self._sumo_step % 10 == 0:
-				h_b_b, h_b_p, h_p_p =  self.getHinderenaceWhenCosharing('E0_0')
-				self._total_hinderance_bike_bike += h_b_b
-				self._total_hinderance_bike_ped += h_b_p
-				self._total_hinderance_ped_ped += h_p_p
+			# if self._sumo_step % 10 == 0:
+			# 	h_b_b, h_b_p, h_p_p =  self.getHinderenaceWhenCosharing('E0_0')
+			# 	self._total_hinderance_bike_bike += h_b_b
+			# 	self._total_hinderance_bike_ped += h_b_p
+			# 	self._total_hinderance_ped_ped += h_p_p
 			# print("hinderance bike with ped : " + str(hinderance))
 
 		else:
@@ -776,9 +729,9 @@ class SUMOEnv(Env):
 			self._total_occupancy_bike_Lane += self.traci.lane.getLastStepOccupancy('E0_1')/laneWidthBike
 			# Count total occupancy of ped lane in percentage
 			self._total_occupancy_ped_Lane += self.traci.lane.getLastStepOccupancy('E0_0')/laneWidthPed
-			if self._sumo_step % 10 == 0:
-				self._total_hinderance_bike_bike += self.getHinderenace('E0_1',"bike_bike")
-				self._total_hinderance_ped_ped += self.getHinderenace('E0_0',"ped_ped")
+			# if self._sumo_step % 10 == 0:
+			# 	self._total_hinderance_bike_bike += self.getHinderenace('E0_1',"bike_bike")
+			# 	self._total_hinderance_ped_ped += self.getHinderenace('E0_0',"ped_ped")
 
 			#Agent 2
 			self._collision_count_bike += bikeCollisionCount
@@ -957,7 +910,7 @@ class SUMOEnv(Env):
 				cosharing = False
 			while self._sumo_step <= self.action_steps:
 				# advance world state	
-				self.traci.simulationStep()
+				# self.traci.simulationStep()
 				self._sumo_step +=1
 				self.collectObservation()
 			
@@ -1174,12 +1127,3 @@ def wrapPi(angle):
 		while angle > 180:
 			angle -= 360
 		return angle
-
-
-# properties of agent entities
-class Agent():
-    def __init__(self):
-        super(Agent, self).__init__()
-        self.done = False
-        # script behavior to execute
-        self.action_callback = None

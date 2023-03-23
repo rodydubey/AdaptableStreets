@@ -9,6 +9,7 @@ import copy
 from config import *
 from replay_buffer import *
 from networks import *
+from utils import get_space_dims
 
 np.random.seed(42)
 THETA=0.15
@@ -38,7 +39,8 @@ class OUNoise:
         return self.state
 
 class Agent:
-    def __init__(self, env, n_agent, actor_lr=ACTOR_LR, critic_lr=CRITIC_LR, gamma=GAMMA, tau=TAU, noise_sigma=0.15):
+    def __init__(self, env, n_agent, actor_lr=ACTOR_LR, critic_lr=CRITIC_LR, 
+                 gamma=GAMMA, tau=TAU, noise_sigma=0.15):
         
         self.gamma = gamma
         self.tau = tau
@@ -46,10 +48,11 @@ class Agent:
         self.critic_lr = critic_lr
         self.noise_sigma = noise_sigma
 
-        self.actor_dims = env.observation_space[n_agent].shape[0]
-        self.n_actions = env.action_space[n_agent].shape[0]
-
+        self.actor_dims = get_space_dims(env.observation_space[n_agent])
+        self.n_actions = get_space_dims(env.action_space[n_agent])
         
+        self.id = n_agent
+        self.name = f'agent {self.id}'
         self.agent_name = "agent_number_{}".format(n_agent)
         
         self.actor = Actor("actor_" + self.agent_name, self.n_actions)

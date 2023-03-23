@@ -34,7 +34,7 @@ wandb.init(
   mode=use_wandb
 )
 display = 'DISPLAY' in os.environ
-use_gui = True
+use_gui = False
 mode = 'gui' if (use_gui and display) else 'none'
 
 # configurations
@@ -42,8 +42,8 @@ env = SUMOEnv(mode=mode)
 print(env.action_space)
 print(env.observation_space)
 # env.discrete_action_input = True
-observe_dim = env.observation_space[0].shape[0]
-action_num = env.action_space[0].n
+observe_dim = env._num_observation
+action_num = env._num_actions
 max_episodes = 300
 max_steps = 5
 # number of agents in env, fixed, do not change
@@ -87,12 +87,12 @@ class Critic(nn.Module):
 
 
 if __name__ == "__main__":
-    actor = ActorDiscrete(observe_dim, action_num)
-    critic = Critic(observe_dim * agent_num, action_num * agent_num)
+    actors = [ActorDiscrete(obs_size, act_size) for obs_size, act_size in zip(observe_dim, action_num)]
+    critic = Critic(sum(observe_dim), sum(action_num))
 
     maddpg = MADDPG(
-        [deepcopy(actor) for _ in range(agent_num)],
-        [deepcopy(actor) for _ in range(agent_num)],
+        actors,
+        [deepcopy(actor) for actor in actors],
         [deepcopy(critic) for _ in range(agent_num)],
         [deepcopy(critic) for _ in range(agent_num)],
         t.optim.Adam,
@@ -116,7 +116,7 @@ if __name__ == "__main__":
             terminal = False
             step = 0
             states = [
-                t.tensor(st, dtype=t.float32).view(1, observe_dim) for st in env.reset("Train")
+                t.tensor(st, dtype=t.float32).view(1, observe_dim[i]) for i, st in enumerate(env.reset("Train"))
             ]
             tmp_observations_list = [[] for _ in range(agent_num)]
 
@@ -134,7 +134,7 @@ if __name__ == "__main__":
                     print(actions)
                     states, rewards, terminals, info = env.step(actions)
                     states = [
-                        t.tensor(st, dtype=t.float32).view(1, observe_dim) for st in states
+                        t.tensor(st, dtype=t.float32).view(1, observe_dim[i]) for i, st in enumerate(states)
                     ]
                     total_reward += float(sum(rewards)) / agent_num
 
