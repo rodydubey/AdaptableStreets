@@ -493,7 +493,6 @@ class SUMOEnv(Env):
 				# print("car stopped: " + str(reward_car_Stopped_count))
 				reward = -(reward_occupancy_car)
 				# print("agent 0 reward: " + str(reward))
-			reward = 0	
 			
 
 		elif agent.name == "agent 1":
@@ -520,7 +519,6 @@ class SUMOEnv(Env):
 					# print("bike + ped stopped: " + str(reward))
 					reward = -((reward_occupancy_bike+reward_occupancy_ped)/2)*10
 					# print("agent 1 reward: " + str(reward))
-			reward = 0
 		
 		elif agent.name == "agent 2":
 			# collisionCount = self._collision_count_bike + self._collision_count_ped
