@@ -3,6 +3,7 @@
 import xml.etree.ElementTree as ET
 try:
 	import libsumo as traci
+    # import traci
 except:
 	import traci
 from sumolib import checkBinary
@@ -13,6 +14,8 @@ baselineCarLaneWidth = 9.6
 baselinebicycleLaneWidth = 1.5
 baselinePedestrianLaneWidth = 1.5
 totalEdgeWidth = baselineCarLaneWidth + baselinebicycleLaneWidth + baselinePedestrianLaneWidth
+carLane_width_actions = ['6.4','9.6']
+bikeLane_width_actions = ['1','2']
 
 netconvert = checkBinary("netconvert")
 sys.path.append(netconvert)
@@ -22,39 +25,20 @@ def clamp(n, minn, maxn):
 
 #function
 def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid):
+    print("Inside AdaptNetwork")
     # parsing directly.
     tree = ET.parse(base_network)
     root = tree.getroot()
-   
-    remainderRoad_0 = 0
-    carLaneWidth_agent_0 = 9.6
-    bikeLaneWidth_agent_1 = 1.5
-    pedLaneWidth_agent_1 = 1.5
-
-   
 
     for key, value in actionDict.items():
         if key == "agent 0":
-            alpha = value  
-            # alpha = random.uniform(0.1, 0.9)
-            # alpha = 0.5
-            carLaneWidth_agent_0 = float(alpha*totalEdgeWidth)
-            # carLaneWidth_agent_0 = clamp(carLaneWidth_agent_0,3.2,9.6)
-            remainderRoad_0 = totalEdgeWidth - carLaneWidth_agent_0
+            carLaneWidth = float(carLane_width_actions[value])
         elif key == "agent 1":
-            beta = value
-            # beta = clamp(beta,0.1,0.99)
-            # beta = random.uniform(0.2, 0.8)
-            # beta = 0.5
-            bikeLaneWidth_agent_1 = float(beta*remainderRoad_0)
-            if bikeLaneWidth_agent_1 == 0:
-                breakk = 0
-            pedLaneWidth_agent_1 = float((1-beta)*remainderRoad_0)
+            bikeLaneWidth = float(bikeLane_width_actions[value])
+            pedLaneWidth = float(totalEdgeWidth-(carLaneWidth + bikeLaneWidth))
 
-        elif key == "agent 2":
-            coShare = np.round(float(value))
-            print(coShare)     
-            # coShare = random.uniform(0.1, 0.9)            
+        elif key == "agent 2":           
+            coShare = value        
             
         
     # carLaneWidth_agent_0 = 6.2
@@ -69,24 +53,24 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid):
     if coShare <= 0.5:
         for lanes in root.iter('lane'):
             if lanes.attrib['id'] == "E0_2":
-                lanes.attrib['width'] = repr(carLaneWidth_agent_0)
+                lanes.attrib['width'] = repr(carLaneWidth)
                 # lanes.attrib['width'] = carLaneWidth
            
             elif lanes.attrib['id'] == "E0_1":
-                lanes.attrib['width'] = repr(bikeLaneWidth_agent_1)
+                lanes.attrib['width'] = repr(bikeLaneWidth)
                 # lanes.attrib['width'] = bikeWidthTemp
 
             elif lanes.attrib['id'] == "E0_0":
-                lanes.attrib['width'] = repr(pedLaneWidth_agent_1)
+                lanes.attrib['width'] = repr(pedLaneWidth)
                 # lanes.attrib['width'] = bikeWidthTemp
     else:
         for lanes in root.iter('lane'):
             if lanes.attrib['id'] == "E0_2":
-                lanes.attrib['width'] = repr(carLaneWidth_agent_0)
+                lanes.attrib['width'] = repr(carLaneWidth)
                 # lanes.attrib['width'] = carLaneWidth
            
             elif lanes.attrib['id'] == "E0_0":
-                lanes.attrib['width'] = repr(bikeLaneWidth_agent_1+pedLaneWidth_agent_1)
+                lanes.attrib['width'] = repr(bikeLaneWidth+pedLaneWidth)
                 # lanes.attrib['width'] = bikeWidthTemp
 
             elif lanes.attrib['id'] == "E0_1":

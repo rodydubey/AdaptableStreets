@@ -48,12 +48,12 @@ class SUMOEnv(Env):
 		self._max_steps = 24000
 		self._slot_duration = 1200
 		self._max_slots = 3
-		self._num_observation = 6
+		self._num_observation = 4
 		self._num_actions = 1
 		self._reward_store = []
 		self._cumulative_wait_store = []
 		self._avg_queue_length_store = []
-		self.action_steps = 300
+		self.action_steps = 100
 		self.sumo_running = False
 		self.viewer = None
 		self.firstTimeFlag = True
@@ -123,24 +123,19 @@ class SUMOEnv(Env):
 		self.time = 0
 		self._fatalPenalty = -20
 		self.lanes_length = 100
+		self._carFlow = 0
+		self._pedFlow = 0
+		self._bikeFlow = 0
 
 		self._scenario = "Train"
 		# configure spaces
 		self.action_space = []
 		self.observation_space = []
-		for agent in self.agents:
-			self.action_space.append(spaces.Box(low=0, high=+1, shape=(1,))) # alpha value
-			# self.action_space.append(spaces.Discrete(self._num_actions))
+		for idx_agent, agent in enumerate(self.agents):		
+			act_space = 2
+			self.action_space.append(spaces.Discrete(act_space))
 			# observation space
 			self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation,)))
-			# if agent.name == "agent 0":
-			# 	self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation,)))
-			# else:
-			# 	self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation+1,)))
-
-		# self.action_space = spaces.Box(low=np.array([0]), high= np.array([+1])) # Beta value 
-		# self.observation_space = spaces.Box(low=0, high=1, shape=(np.shape(self.observation)))
-		# self.observation_space.append(spaces.Box(low=-np.inf, high=+np.inf, shape=(6,), dtype=np.float32))
 
 	def createNAgents(self):
 		agents = [Agent() for i in range(self.n)]
@@ -177,12 +172,60 @@ class SUMOEnv(Env):
 		else:
 			cosharing = False
 
+		if agent.name == "agent 0": # car
+			state[0] = nLaneWidthCar
+			state[1] = nLaneWidthBike + nLaneWidthPed
+			state[2] = self._total_occupancy_car_Lane/self.action_steps			
+			state[3] = self._total_density_car_lane*10/self.action_steps
+			if state[1] > 1 or state[2] > 1 or state[3] > 1:
+				print("Agent 0 observation out of bound")
+
+			# state[0] = nLaneWidthCar
+			# state[1] = nLaneWidthBike + nLaneWidthPed
+			# state[2] = np.interp(self._total_unique_car_count,[0,normalizeUniqueVehicleCount],[0,1]) # average number of unique cars on the car lane through simulation steps
+			# state[3] = self._total_occupancy_car_Lane/self.action_steps # average occupancy of the car lane through simulation steps. The raw value is in percentage
+			# state[4] = (self._total_occupancy_bike_Lane/self.action_steps + self._total_occupancy_ped_Lane/self.action_steps)/2 # average occupancy of bike plus ped lanes
+			# state[5] = np.interp(self._total_count_waiting_car/self.action_steps,[0,10],[0,1]) # average waiting count of cars on the car lane through simulation steps
+			# if state[2] == 1 or state[3] == 1 or state[4] == 1 or state[5] == 1:
+			# 	print("Agent 0 observation out of bound")
+
+
+		
+		elif agent.name == "agent 1": # bike			
+			state[0] = nLaneWidthBike
+			state[1] = nLaneWidthPed				
+			state[2] = self._total_occupancy_bike_Lane/self.action_steps 		
+			state[3] = self._total_occupancy_ped_Lane/self.action_steps
+				
+			if state[1] > 1 or state[2] > 1 or state[3] > 1:
+				print("Agent 1 observation out of bound")
+		
+
+		elif agent.name == "agent 2": 
+			if cosharing:
+				state[0] = 1 #flag for cosharing on or off
+				state[1] = self._total_density_bike_lane/self.action_steps 
+				state[2] = self._total_density_ped_lane/self.action_steps
+				state[3] = self._total_hinderance_bike_ped/self.action_steps
+			else:
+				
+				state[0] = 0 #flag for cosharing on or off
+				state[1] = self._total_density_bike_lane/self.action_steps 
+				state[2] = self._total_density_ped_lane/self.action_steps
+				state[3] = self._total_hinderance_ped_ped/self.action_steps
+			if state[1] > 1 or state[2] > 1 or state[3] > 1:
+				print("Agent 2 observation out of bound")
+
+		print(state[0],state[1],state[2],state[3])
+		return state
 		# if agent.name == "agent 0": # car
 		# 	state[0] = nLaneWidthCar
 		# 	state[1] = nLaneWidthBike + nLaneWidthPed
 		# 	state[2] = self._total_occupancy_car_Lane/self.action_steps			
-		# 	state[3] = self._total_density_car_lane*10/self.action_steps
-		# 	if state[2] > 1 or state[3] > 1:
+		# 	state[3] = self._total_occupancy_bike_Lane/self.action_steps + self._total_occupancy_ped_Lane/self.action_steps
+		# 	state[4] = self._total_density_car_lane/self.action_steps
+		# 	state[5] = self._total_density_bike_lane/self.action_steps + self._total_density_ped_lane/self.action_steps
+		# 	if state[2] > 1 or state[3] > 1 or state[4] > 1 or state[5] > 1:
 		# 		print("Agent 0 observation out of bound")
 
 		# 	# state[0] = nLaneWidthCar
@@ -202,101 +245,46 @@ class SUMOEnv(Env):
 		# 		state[1] = nLaneWidthPed
 		# 		state[2] = 0
 		# 		state[3] = self._total_occupancy_ped_Lane/self.action_steps
+		# 		state[4] = self._total_density_ped_lane/self.action_steps
+		# 		state[5] = self._total_density_bike_lane/self.action_steps
 				
 		# 	else:
 		# 		state[0] = nLaneWidthBike
 		# 		state[1] = nLaneWidthPed				
 		# 		state[2] = self._total_occupancy_bike_Lane/self.action_steps 		
 		# 		state[3] = self._total_occupancy_ped_Lane/self.action_steps
+		# 		state[4] = self._total_density_ped_lane/self.action_steps
+		# 		state[5] = self._total_density_bike_lane/self.action_steps
 				
-		# 	if state[2] > 1 or state[3] > 1:
+		# 	if state[2] > 1 or state[3] > 1 or state[4] > 1 or state[5] > 1:
 		# 		print("Agent 1 observation out of bound")
 		
 
 		# elif agent.name == "agent 2": 
-		# 	if cosharing:
-		# 		state[0] = 1 #flag for cosharing on or off
-		# 		state[1] = self._total_hinderance_bike_ped/self.action_steps
-		# 		state[2] = self._total_hinderance_ped_ped/self.action_steps
-		# 		state[3] = self._total_hinderance_bike_bike/self.action_steps
+		# 	if self._levelOfService/self.action_steps > 1:
+		# 		los = 1
 		# 	else:
-				
-		# 		state[0] = 0 #flag for cosharing on or off
-		# 		state[1] = self._total_hinderance_bike_ped/self.action_steps
-		# 		state[2] = self._total_hinderance_ped_ped/self.action_steps
-		# 		state[3] = self._total_hinderance_bike_bike/self.action_steps
-		# 	if state[1] == 1 or state[2] == 1:
+		# 		los = self._levelOfService/self.action_steps
+		# 	if cosharing:
+		# 		state[0] = 1 #np.interp(self._levelOfService/(self.action_steps*10),[0,2],[0,1]) #flag for cosharing on or off
+		# 		state[1] = self._total_density_ped_lane/self.action_steps
+		# 		state[2] = 0
+		# 		state[3] = los
+		# 		state[4] = nLaneWidthPed
+		# 		state[5] = 0
+		# 	else:
+		# 		state[0] = 0 #np.interp(self._levelOfService/(self.action_steps*10),[0,2],[0,1]) #flag for cosharing on or off
+		# 		state[1] = self._total_density_ped_lane/self.action_steps
+		# 		state[2] = self._total_density_bike_lane/self.action_steps
+		# 		state[3] = los
+		# 		state[4] = nLaneWidthPed
+		# 		state[5] = nLaneWidthBike
+			
+		# 	if state[2] > 1 or state[3] > 1 or state[4] > 1 or state[5] > 1:
 		# 		print("Agent 2 observation out of bound")
 
-		# print(state[0],state[1],state[2],state[3])
+		# print(state[0],state[1],state[2],state[3],state[4],state[5])
 		# return state
-		if agent.name == "agent 0": # car
-			state[0] = nLaneWidthCar
-			state[1] = nLaneWidthBike + nLaneWidthPed
-			state[2] = self._total_occupancy_car_Lane/self.action_steps			
-			state[3] = self._total_occupancy_bike_Lane/self.action_steps + self._total_occupancy_ped_Lane/self.action_steps
-			state[4] = self._total_density_car_lane/self.action_steps
-			state[5] = self._total_density_bike_lane/self.action_steps + self._total_density_ped_lane/self.action_steps
-			if state[2] > 1 or state[3] > 1 or state[4] > 1 or state[5] > 1:
-				print("Agent 0 observation out of bound")
-
-			# state[0] = nLaneWidthCar
-			# state[1] = nLaneWidthBike + nLaneWidthPed
-			# state[2] = np.interp(self._total_unique_car_count,[0,normalizeUniqueVehicleCount],[0,1]) # average number of unique cars on the car lane through simulation steps
-			# state[3] = self._total_occupancy_car_Lane/self.action_steps # average occupancy of the car lane through simulation steps. The raw value is in percentage
-			# state[4] = (self._total_occupancy_bike_Lane/self.action_steps + self._total_occupancy_ped_Lane/self.action_steps)/2 # average occupancy of bike plus ped lanes
-			# state[5] = np.interp(self._total_count_waiting_car/self.action_steps,[0,10],[0,1]) # average waiting count of cars on the car lane through simulation steps
-			# if state[2] == 1 or state[3] == 1 or state[4] == 1 or state[5] == 1:
-			# 	print("Agent 0 observation out of bound")
-
-
-		
-		elif agent.name == "agent 1": # bike
-			if cosharing:
-				state[0] = 0
-				state[1] = nLaneWidthPed
-				state[2] = 0
-				state[3] = self._total_occupancy_ped_Lane/self.action_steps
-				state[4] = self._total_density_ped_lane/self.action_steps
-				state[5] = self._total_density_bike_lane/self.action_steps
-				
-			else:
-				state[0] = nLaneWidthBike
-				state[1] = nLaneWidthPed				
-				state[2] = self._total_occupancy_bike_Lane/self.action_steps 		
-				state[3] = self._total_occupancy_ped_Lane/self.action_steps
-				state[4] = self._total_density_ped_lane/self.action_steps
-				state[5] = self._total_density_bike_lane/self.action_steps
-				
-			if state[2] > 1 or state[3] > 1 or state[4] > 1 or state[5] > 1:
-				print("Agent 1 observation out of bound")
-		
-
-		elif agent.name == "agent 2": 
-			if self._levelOfService/self.action_steps > 1:
-				los = 1
-			else:
-				los = self._levelOfService/self.action_steps
-			if cosharing:
-				state[0] = 1 #np.interp(self._levelOfService/(self.action_steps*10),[0,2],[0,1]) #flag for cosharing on or off
-				state[1] = self._total_density_ped_lane/self.action_steps
-				state[2] = 0
-				state[3] = los
-				state[4] = nLaneWidthPed
-				state[5] = 0
-			else:
-				state[0] = 0 #np.interp(self._levelOfService/(self.action_steps*10),[0,2],[0,1]) #flag for cosharing on or off
-				state[1] = self._total_density_ped_lane/self.action_steps
-				state[2] = self._total_density_bike_lane/self.action_steps
-				state[3] = los
-				state[4] = nLaneWidthPed
-				state[5] = nLaneWidthBike
-			
-			if state[2] > 1 or state[3] > 1 or state[4] > 1 or state[5] > 1:
-				print("Agent 2 observation out of bound")
-
-		print(state[0],state[1],state[2],state[3],state[4],state[5])
-		return state
 	
 	def _collect_waiting_times_cars(self,laneID):
 		"""
@@ -603,37 +591,39 @@ class SUMOEnv(Env):
 			# else:
 			# 	negative_reward_collision = -0.01*collisionCount
 			# 	reward = negative_reward_collision
-			# densityThreshold = 17
-			# if cosharing:
-			# 	if self._total_density_ped_lane > densityThreshold:
-			# 		reward = -0.25
-			# 	elif self._total_density_ped_lane < densityThreshold:
-			# 		reward = +0.25
-				
-			# else:
-			# 	if (self._total_density_ped_lane + self._total_density_bike_lane) > 2*densityThreshold:
-			# 		reward = +0.25
-			# 	elif (self._total_density_ped_lane + self._total_density_bike_lane) < 2*densityThreshold:
-			# 		reward = -0.25
-
-			levelOfServiceThreshold_A = 5
-			levelOfServiceThreshold_B = 10
-			reward = 0.5
-			self.reward_agent_2 = reward
+			densityThreshold = 17
+			
 			if cosharing:
-				if self._levelOfService > levelOfServiceThreshold_A:
-					reward = -reward
-					agent.done = True
-				elif self._levelOfService < levelOfServiceThreshold_A:
-					reward = +reward
+				if self._total_density_ped_lane > densityThreshold:
+					reward = -0.25
+				elif self._total_density_ped_lane < densityThreshold:
+					reward = +0.5
 				
 			else:
-				if (self._levelOfService) > levelOfServiceThreshold_A:
-					reward = +reward
-				elif (self._levelOfService) < levelOfServiceThreshold_A:
-					# reward = self._fatalPenalty
-					# agent.done = True
-					reward = -reward
+				if (self._total_density_ped_lane + self._total_density_bike_lane) > 2*densityThreshold:
+					reward = +0.5
+				elif (self._total_density_ped_lane + self._total_density_bike_lane) < 2*densityThreshold:
+					reward = -0.25
+
+			self.reward_agent_2 = reward
+
+			# levelOfServiceThreshold_A = 5
+			# levelOfServiceThreshold_B = 10
+			# reward = 0.5
+			# self.reward_agent_2 = reward
+			# if cosharing:
+			# 	if self._levelOfService > levelOfServiceThreshold_A:
+			# 		reward = -reward
+			# 	elif self._levelOfService < levelOfServiceThreshold_A:
+			# 		reward = +reward
+				
+			# else:
+			# 	if (self._levelOfService) > levelOfServiceThreshold_A:
+			# 		reward = +reward
+			# 	elif (self._levelOfService) < levelOfServiceThreshold_A:
+			# 		# reward = self._fatalPenalty
+			# 		# agent.done = True
+			# 		reward = -reward
 
 			# if cosharing == True:
 			# 	# positive_reward_cosharing = +0.25
@@ -960,7 +950,6 @@ class SUMOEnv(Env):
 				temp_action_dict[agent.name] = action_n[i]
 				action_space_dict[agent.name] = self.action_space[i]
 				if agent.name == "agent 2":
-
 					self.coShareValue = action_n[i]
 			self._set_action(temp_action_dict,agent,action_space_dict)
 			actionFlag = False
@@ -1125,9 +1114,9 @@ class SUMOEnv(Env):
 			cosharing = 0
 
 		
-		carFlowRate,bikeFlowRate,pedFlowRate = self.FlowRateStatsFromRouteFile()
+		self._carFlow,self._bikeFlow,self._pedFlow = self.FlowRateStatsFromRouteFile()
 		
-		return carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,self._total_mean_speed_car,\
+		return self._carFlow,self._bikeFlow,self._pedFlow,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,self._total_mean_speed_car,\
 			self._total_mean_speed_bike,self._total_mean_speed_ped,self._total_count_waiting_car,self._total_count_waiting_bike,\
 				self._total_count_waiting_ped,self._total_unique_car_count,self._total_unique_bike_count,self._total_unique_ped_count,\
 					self._total_occupancy_car_Lane,self._total_occupancy_bike_Lane,self._total_occupancy_ped_Lane,self._collision_count_bike,\
