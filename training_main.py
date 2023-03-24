@@ -114,7 +114,7 @@ if __name__ == "__main__":
         actor_learning_rate=actor_learning_rate,
         critic_learning_rate=critic_learning_rate,
         update_rate=tau,
-        replay_device='mps'
+        replay_device='cpu'
     )
 
     episode, step, reward_fulfilled = 0, 0, 0
