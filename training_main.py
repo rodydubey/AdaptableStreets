@@ -22,16 +22,30 @@ from gym_sumo.envs.utils import generateFlowFiles
 from gym_sumo.envs.utils import plot_scores
 from gym_sumo.envs.utils import print_status
 
-# Important note:
-# In order to successfully run the environment, please git clone the project
-# then run:
-#    pip install -e ./test_lib/multiagent-particle-envs/
-# in project root directory
+np.set_printoptions(precision=3, suppress=True)
+                       
+max_episodes = 300
+max_steps = 5
+# number of agents in env, fixed, do not change
+hidden_dim = 32
+batch_size = 64
+actor_learning_rate = 0.0005
+critic_learning_rate = 0.001
+tau = 0.001
+
+config = {
+  "hidden_layer_sizes": [hidden_dim, hidden_dim],
+  "actor_lr": actor_learning_rate,
+  "critic_lr": critic_learning_rate,
+  "tau": tau,
+}
+
 use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, or disabled
 wandb.init(
   project=f"pytorch_madddpg_SUMO{'MADDPG_Machin'.lower()}",
   tags=["MADDPG_2", "RL"],
-  mode=use_wandb
+  mode=use_wandb,
+  config=config
 )
 display = 'DISPLAY' in os.environ
 use_gui = False
@@ -44,19 +58,17 @@ print(env.observation_space)
 # env.discrete_action_input = True
 observe_dim = env._num_observation
 action_num = env._num_actions
-max_episodes = 300
-max_steps = 5
-# number of agents in env, fixed, do not change
-agent_num = 3
+agent_num = env.n
+env.shared_reward = True
 
 # model definition
 class ActorDiscrete(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
 
-        self.fc1 = nn.Linear(state_dim, 16)
-        self.fc2 = nn.Linear(16, 16)
-        self.fc3 = nn.Linear(16, action_dim)
+        self.fc1 = nn.Linear(state_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, action_dim)
 
     def forward(self, state):
         a = t.relu(self.fc1(state))
@@ -74,9 +86,9 @@ class Critic(nn.Module):
         #       action_dim is the dimension of all actions from all agents.
         super().__init__()
 
-        self.fc1 = nn.Linear(state_dim + action_dim, 16)
-        self.fc2 = nn.Linear(16, 16)
-        self.fc3 = nn.Linear(16, 1)
+        self.fc1 = nn.Linear(state_dim + action_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, 1)
 
     def forward(self, state, action):
         state_action = t.cat([state, action], 1)
@@ -98,7 +110,11 @@ if __name__ == "__main__":
         t.optim.Adam,
         nn.MSELoss(reduction="sum"),
         critic_visible_actors=[list(range(agent_num))] * agent_num,
-        batch_size = 8
+        batch_size=batch_size,
+        actor_learning_rate=actor_learning_rate,
+        critic_learning_rate=critic_learning_rate,
+        update_rate=tau,
+        replay_device='mps'
     )
 
     episode, step, reward_fulfilled = 0, 0, 0
@@ -129,8 +145,8 @@ if __name__ == "__main__":
                     )
                     actions = [int(r[0]) for r in results]
                     action_probs = [r[1] for r in results]
-                    print("before step")
-                    print(actions)
+                    print(actions, action_probs)
+
                     states, rewards, terminals, info = env.step(actions)
                     states = [
                         t.tensor(st, dtype=t.float32).view(1, observe_dim[i]) for i, st in enumerate(states)
@@ -163,8 +179,6 @@ if __name__ == "__main__":
                                 "terminal": term or step == max_steps,
                             }
                         )
-            wandb.log({'# Episodes': episode, 
-                "Average reward": round(np.mean(scores[-10:]), 2)})
             
             maddpg.store_episodes(tmp_observations_list)
             # total reward is divided by steps here, since:
@@ -173,16 +187,18 @@ if __name__ == "__main__":
             total_reward /= step
 
             # update, update more if episode is longer, else less
+            act_loss, crit_loss = None, None
             if episode > 10:
                 for _ in range(step):
-                    print(f'Training for ep: {episode}\tstep{_}')
-                    maddpg.update()
+                    act_loss, crit_loss = maddpg.update()
 
             # show reward
             smoothed_total_reward = smoothed_total_reward * 0.9 + total_reward * 0.1
             scores.append(smoothed_total_reward)
             logger.info(f"Episode {episode} total reward={smoothed_total_reward:.2f}")
-
+            wandb.log({'Actor loss': act_loss,
+                       'Critic loss': crit_loss,
+                       "Average reward": smoothed_total_reward})
         
     
     plot_scores([scores], ['ou'], save_as='normal.png')
