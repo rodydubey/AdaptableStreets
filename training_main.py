@@ -55,7 +55,6 @@ mode = 'gui' if (use_gui and display) else 'none'
 env = SUMOEnv(mode=mode)
 print(env.action_space)
 print(env.observation_space)
-# env.discrete_action_input = True
 observe_dim = env._num_observation
 action_num = env._num_actions
 agent_num = env.n
@@ -76,6 +75,19 @@ class ActorDiscrete(nn.Module):
         a = t.softmax(self.fc3(a), dim=1)
         return a
 
+class Actor(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super().__init__()
+
+        self.fc1 = nn.Linear(state_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, action_dim)
+
+    def forward(self, state):
+        a = t.relu(self.fc1(state))
+        a = t.relu(self.fc2(a))
+        a = t.sigmoid(self.fc3(a))
+        return a
 
 class Critic(nn.Module):
     def __init__(self, state_dim, action_dim):
@@ -97,9 +109,38 @@ class Critic(nn.Module):
         q = self.fc3(q)
         return q
 
+def create_actors(observe_dim, action_num):
+    actors = []
+    for obs_size, act_size in zip(observe_dim, action_num):
+        if act_size==1:
+            act_func = Actor
+        else:
+            act_func = ActorDiscrete
+        actors.append(act_func(obs_size, act_size))
+    return actors
+
+
+def maddpg_act(maddpg, states):
+    states = [{'state': sk} for sk in states]
+    actions = maddpg._act_api_general(states, use_target=False)
+    result = []
+    for i, (action, *others) in enumerate(actions):
+        if action_num[i]==1:
+            kwargs = {'mode': 'normal', 'noise_param': (0, 0.15)}
+            normal_scalar = 0.15
+            noise_uniform = t.randn(1, device=action.device)*normal_scalar
+            action = action + noise_uniform    
+            action = t.clip(action,0.1,0.9)
+            result.append((action, action))
+        else:
+            batch_size = action.shape[0]
+            dist = t.distributions.Categorical(action)
+            action_disc = dist.sample([batch_size, 1]).view(batch_size, 1)
+            result.append((action_disc, action))
+    return result
 
 if __name__ == "__main__":
-    actors = [ActorDiscrete(obs_size, act_size) for obs_size, act_size in zip(observe_dim, action_num)]
+    actors = create_actors(observe_dim, action_num)
     critic = Critic(sum(observe_dim), sum(action_num))
 
     maddpg = MADDPG(
@@ -140,10 +181,8 @@ if __name__ == "__main__":
                 with t.no_grad():
                     old_states = states
                     # agent model inference
-                    results = maddpg.act_discrete_with_noise(
-                        [{"state": st} for st in states]
-                    )
-                    actions = [int(r[0]) for r in results]
+                    results = maddpg_act(maddpg, states)
+                    actions = [r[0][0] for r in results]
                     action_probs = [r[1] for r in results]
                     print(actions, action_probs)
 
@@ -153,7 +192,7 @@ if __name__ == "__main__":
                     ]
                     total_reward += float(sum(rewards)) / agent_num
 
-
+                    terminal = any(terminals)
                     carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
                     car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane, total_density_car_lane,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService = env.testAnalysisStats()
             
@@ -201,13 +240,13 @@ if __name__ == "__main__":
                        "Average reward": smoothed_total_reward})
         
     
-    plot_scores([scores], ['ou'], save_as='normal.png')
+    # plot_scores([scores], ['ou'], save_as='normal.png')
 
     plt.plot(scores)
     plt.xlabel('episodes')
     plt.ylabel('ave rewards')
     plt.savefig('avgScore.jpg')
-    plt.show()
+    # plt.show()
 
     # plt.figure()
     # plt.plot(avg_cosharing_hist, label=env.reward_agent_2)
