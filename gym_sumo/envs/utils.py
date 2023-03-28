@@ -14,9 +14,9 @@ root = tree.getroot()
 # bikeflowLevelDict = {'l':22,'m':63,'h':96}
 # pedflowLevelDict = {'l':15,'m':122,'h':250}
 
-carflowLevelDict = {'l':200,'m':600,'h':1200}
-bikeflowLevelDict = {'l':200,'m':600,'h':1200}
-pedflowLevelDict = {'l':200,'m':600,'h':1200}
+carflowLevelDict = {'l':100,'m':700,'h':1250}
+bikeflowLevelDict = {'l':22,'m':63,'h':96}
+pedflowLevelDict = {'l':15,'m':122,'h':215}
 
 #dictionary of index with traffic flow data first (ped), second(bike), third (car)
 trafficFlowDataAll = {'1':'l_l_l','2':'l_l_m','3':'l_l_h','4':'l_m_l','5':'l_m_m','6':'l_l_h','7':'l_h_l','8':'l_h_m','9':'l_h_h','10':'m_l_m','11':'m_l_m'
