@@ -21,7 +21,7 @@ def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
 #function
-def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid, traci):
+def adaptNetwork(base_network,actionDict,routeFileName,sumoCMD, pid, traci):
     # parsing directly.
     tree = ET.parse(base_network)
     root = tree.getroot()
