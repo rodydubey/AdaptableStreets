@@ -5,6 +5,8 @@ from sumolib import checkBinary
 import os
 import sys
 import numpy as np
+import subprocess
+
 baselineCarLaneWidth = 9.6
 baselinebicycleLaneWidth = 1.5
 baselinePedestrianLaneWidth = 1.5
@@ -20,18 +22,26 @@ def clamp(n, minn, maxn):
 
 #function
 def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid, traci):
-    print("Inside AdaptNetwork")
     # parsing directly.
     tree = ET.parse(base_network)
     root = tree.getroot()
     remainderLaneLength = 0
     for key, value in actionDict.items():
         if key == "agent 0":
-            carLaneWidth = float(carLane_width_actions[value])
-            remainderLaneLength = totalEdgeWidth - carLaneWidth
+            # carLaneWidth = float(carLane_width_actions[value])
+            # remainderLaneLength = totalEdgeWidth - carLaneWidth
+
+            alpha = value  
+            carLaneWidth = float(alpha*totalEdgeWidth)
+            remainderRoad_0 = totalEdgeWidth - carLaneWidth
+
         elif key == "agent 1":
-            bikeLaneWidth = float(bikeLane_width_actions[value])*remainderLaneLength
-            pedLaneWidth = float(totalEdgeWidth-(carLaneWidth + bikeLaneWidth))
+            # bikeLaneWidth = float(bikeLane_width_actions[value])*remainderLaneLength
+            # pedLaneWidth = float(totalEdgeWidth-(carLaneWidth + bikeLaneWidth))
+
+            beta = value
+            bikeLaneWidth = float(beta*remainderRoad_0)
+            pedLaneWidth = float((1-beta)*remainderRoad_0)
 
         elif key == "agent 2":           
             coShare = value      
@@ -83,7 +93,7 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid, traci)
     # os.system("C:/D/SUMO/SumoFromSource/bin/netconvert.exe -s environment\intersection2.net.xml -o environment\intersection2.net.xml --crossings.guess")
     # os.system("C:/D/SUMO/SumoFromSource/bin/netconvert.exe -s environment\intersection2.net.xml -o environment\intersection2.net.xml")
     # netconvert = checkBinary("netconvert")
-    os.system(f"netconvert -s {modified_netfile} -o {modified_netfile} -W")
+    subprocess.run(f"netconvert -s {modified_netfile} -o {modified_netfile} -W", capture_output=True, shell=True)
     # allVehicles = traci.vehicle.getIDList()
     
     # peds= traci.lane.getLastStepVehicleIDs("E0_0")
@@ -119,12 +129,12 @@ def adaptNetwork(base_network,actionDict,name,routeFileName,sumoCMD, pid, traci)
     
         
     # save state
-    # traci.simulation.saveState('environment/savedstate.xml') 
+    traci.simulation.saveState('environment/savedstate.xml') 
     # load traci simulation   
     # traci.load(['-n', "environment\intersection2.net.xml","--start"])
 
     # traci.load(sumoCMD + ['-n', 'environment/intersection2.net.xml', '-r', routeFileName, '--additional-files',"environment/intersection2.add.xml"])
-    traci.load(sumoCMD + ['-n', modified_netfile, '-r', routeFileName])
+    traci.load(sumoCMD + ['-n', modified_netfile, '-r', routeFileName] + ['--load-state', 'environment/savedstate.xml'])
     # traci.load(['-n', 'environment/intersection2.net.xml', '-r', routeFileName, "--start"]) # should we keep the previous vehic
    
     # load last saved state
