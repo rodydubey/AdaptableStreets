@@ -1,8 +1,7 @@
 from machin.machin.frame.algorithms import MADDPG
 from machin.machin.utils.logging import default_logger as logger
 from copy import deepcopy
-import torch as t
-import torch.nn as nn
+
 
 import numpy as np
 import sys
@@ -23,21 +22,26 @@ from gym_sumo.envs.utils import plot_scores
 from gym_sumo.envs.utils import print_status
 
 np.set_printoptions(precision=3, suppress=True)
-                       
+
 max_episodes = 300
-max_steps = 5
+max_steps = 10
 # number of agents in env, fixed, do not change
-hidden_dim = 32
-batch_size = 64
-actor_learning_rate = 0.0005
-critic_learning_rate = 0.001
-tau = 0.001
+hidden_dim = 64
+batch_size = 256
+actor_learning_rate = 0.001
+critic_learning_rate = 0.005
+tau = 0.01
+gamma = 0.95
 
 config = {
   "hidden_layer_sizes": [hidden_dim, hidden_dim],
   "actor_lr": actor_learning_rate,
   "critic_lr": critic_learning_rate,
   "tau": tau,
+  "gamma": gamma,
+  "max_steps": max_steps,
+  "batch_size": batch_size,
+  "hidden_dim": hidden_dim
 }
 
 use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, or disabled
@@ -60,107 +64,23 @@ action_num = env._num_actions
 agent_num = env.n
 env.shared_reward = True
 
-# model definition
-class ActorDiscrete(nn.Module):
-    def __init__(self, state_dim, action_dim):
-        super().__init__()
 
-        self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, action_dim)
-
-    def forward(self, state):
-        a = t.relu(self.fc1(state))
-        a = t.relu(self.fc2(a))
-        a = t.softmax(self.fc3(a), dim=1)
-        return a
-
-class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim):
-        super().__init__()
-
-        self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, action_dim)
-
-    def forward(self, state):
-        a = t.relu(self.fc1(state))
-        a = t.relu(self.fc2(a))
-        a = t.sigmoid(self.fc3(a))
-        return a
-
-class Critic(nn.Module):
-    def __init__(self, state_dim, action_dim):
-        # This critic implementation is shared by the prey(DDPG) and
-        # predators(MADDPG)
-        # Note: For MADDPG
-        #       state_dim is the dimension of all states from all agents.
-        #       action_dim is the dimension of all actions from all agents.
-        super().__init__()
-
-        self.fc1 = nn.Linear(state_dim + action_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, 1)
-
-    def forward(self, state, action):
-        state_action = t.cat([state, action], 1)
-        q = t.relu(self.fc1(state_action))
-        q = t.relu(self.fc2(q))
-        q = self.fc3(q)
-        return q
-
-def create_actors(observe_dim, action_num):
-    actors = []
-    for obs_size, act_size in zip(observe_dim, action_num):
-        if act_size==1:
-            act_func = Actor
-        else:
-            act_func = ActorDiscrete
-        actors.append(act_func(obs_size, act_size))
-    return actors
-
-
-def maddpg_act(maddpg, states):
-    states = [{'state': sk} for sk in states]
-    actions = maddpg._act_api_general(states, use_target=False)
-    result = []
-    for i, (action, *others) in enumerate(actions):
-        if action_num[i]==1:
-            kwargs = {'mode': 'normal', 'noise_param': (0, 0.15)}
-            normal_scalar = 0.15
-            noise_uniform = t.randn(1, device=action.device)*normal_scalar
-            action = action + noise_uniform    
-            action = t.clip(action,0.1,0.9)
-            result.append((action, action))
-        else:
-            batch_size = action.shape[0]
-            dist = t.distributions.Categorical(action)
-            action_disc = dist.sample([batch_size, 1]).view(batch_size, 1)
-            result.append((action_disc, action))
-    return result
 
 if __name__ == "__main__":
-    actors = create_actors(observe_dim, action_num)
-    critic = Critic(sum(observe_dim), sum(action_num))
+    from gym_sumo.actors.maddpg import MADDPGAgent
+    from gym_sumo.actors.heuristic import HeuristicAgent
 
-    maddpg = MADDPG(
-        actors,
-        [deepcopy(actor) for actor in actors],
-        [deepcopy(critic) for _ in range(agent_num)],
-        [deepcopy(critic) for _ in range(agent_num)],
-        t.optim.Adam,
-        nn.MSELoss(reduction="sum"),
-        critic_visible_actors=[list(range(agent_num))] * agent_num,
-        batch_size=batch_size,
-        actor_learning_rate=actor_learning_rate,
-        critic_learning_rate=critic_learning_rate,
-        update_rate=tau,
-        replay_device='cpu'
-    )
+    agent = MADDPGAgent(env, observe_dim, action_num, agent_num, hidden_dim, 
+                         batch_size, actor_learning_rate, critic_learning_rate,
+                         tau, gamma)
+    # agent = HeuristicAgent(env, observe_dim, action_num, agent_num, hidden_dim, 
+    #                      batch_size, actor_learning_rate, critic_learning_rate,
+    #                      tau, gamma)
 
     episode, step, reward_fulfilled = 0, 0, 0
     smoothed_total_reward = 0
     scores = []
+
     trainResultFilePath = f"stat_train_{env.pid}.csv"    
     with open(trainResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
@@ -171,55 +91,33 @@ if __name__ == "__main__":
             total_reward = 0
             terminal = False
             step = 0
-            states = [
-                t.tensor(st, dtype=t.float32).view(1, observe_dim[i]) for i, st in enumerate(env.reset("Train"))
-            ]
-            tmp_observations_list = [[] for _ in range(agent_num)]
+            states = env.reset('Train')
+            states = agent.prepare_states(states) 
 
             while not terminal and step <= max_steps:
                 step += 1
-                with t.no_grad():
-                    old_states = states
-                    # agent model inference
-                    results = maddpg_act(maddpg, states)
-                    actions = [r[0][0] for r in results]
-                    action_probs = [r[1] for r in results]
-                    print(actions, action_probs)
+                old_states = states
+                # agent model inference
+                actions, action_probs = agent.act(states, episode)
+                print(actions, action_probs[-1])
 
-                    states, rewards, terminals, info = env.step(actions)
-                    states = [
-                        t.tensor(st, dtype=t.float32).view(1, observe_dim[i]) for i, st in enumerate(states)
-                    ]
-                    total_reward += float(sum(rewards)) / agent_num
+                states, rewards, terminals, info = env.step(actions)
+                states = agent.prepare_states(states)
+                total_reward += sum(rewards) / agent_num
 
-                    terminal = any(terminals)
-                    carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
-                    car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane, total_density_car_lane,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService = env.testAnalysisStats()
+                # terminal = any(terminals)
+                carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
+                car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane, total_density_car_lane,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService = env.testAnalysisStats()
+        
+                rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
+                writer.writerow([carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,\
+                    total_unique_ped_count,car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane,total_density_car_lane,rewardAgent_0, rewardAgent_1,rewardAgent_2,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService])
+                
+                terminals = [term or step == max_steps for term in terminals]
+                agent.store_transition(old_states, action_probs, states, rewards, terminals)
+                
             
-                    rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
-                    writer.writerow([carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,\
-                        total_unique_ped_count,car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane,total_density_car_lane,rewardAgent_0, rewardAgent_1,rewardAgent_2,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService])
-                    
-
-                    for tmp_observations, ost, act, st, rew, term in zip(
-                        tmp_observations_list,
-                        old_states,
-                        action_probs,
-                        states,
-                        rewards,
-                        terminals,
-                    ):
-                        tmp_observations.append(
-                            {
-                                "state": {"state": ost},
-                                "action": {"action": act},
-                                "next_state": {"state": st},
-                                "reward": float(rew),
-                                "terminal": term or step == max_steps,
-                            }
-                        )
-            
-            maddpg.store_episodes(tmp_observations_list)
+            agent.process_transitions() # process only after an episode
             # total reward is divided by steps here, since:
             # "Agents are rewarded based on minimum agent distance
             #  to each landmark, penalized for collisions"
@@ -227,9 +125,9 @@ if __name__ == "__main__":
 
             # update, update more if episode is longer, else less
             act_loss, crit_loss = None, None
-            if episode > 10:
+            if episode > 10 and agent.get_buffer_size()>=batch_size:
                 for _ in range(step):
-                    act_loss, crit_loss = maddpg.update()
+                    act_loss, crit_loss = agent.train()
 
             # show reward
             smoothed_total_reward = smoothed_total_reward * 0.9 + total_reward * 0.1
@@ -238,8 +136,6 @@ if __name__ == "__main__":
             wandb.log({'Actor loss': act_loss,
                        'Critic loss': crit_loss,
                        "Average reward": smoothed_total_reward})
-        
-    
     # plot_scores([scores], ['ou'], save_as='normal.png')
 
     plt.plot(scores)
