@@ -11,7 +11,7 @@ baselineCarLaneWidth = 9.6
 baselinebicycleLaneWidth = 1.5
 baselinePedestrianLaneWidth = 1.5
 totalEdgeWidth = baselineCarLaneWidth + baselinebicycleLaneWidth + baselinePedestrianLaneWidth
-carLane_width_actions = ['3.2','5.5','7.8','9.6']
+carLane_width_actions = ['3.2','5.4','6.6','7.8','9.6']
 bikeLane_width_actions = ['0.1','0.2','0.3','0.4','0.5','0.6','0.7','0.8','0.9']
 
 netconvert = checkBinary("netconvert")
@@ -21,27 +21,29 @@ def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
 #function
-def adaptNetwork(base_network,actionDict,routeFileName,sumoCMD, pid, traci):
+def adaptNetwork(base_network,actionDict,routeFileName,sumoCMD, pid, traci, discrete_act):
     # parsing directly.
     tree = ET.parse(base_network)
     root = tree.getroot()
     remainderLaneLength = 0
     for key, value in actionDict.items():
         if key == "agent 0":
-            # carLaneWidth = float(carLane_width_actions[value])
-            # remainderLaneLength = totalEdgeWidth - carLaneWidth
-
-            alpha = value  
-            carLaneWidth = float(alpha*totalEdgeWidth)
-            remainderRoad_0 = totalEdgeWidth - carLaneWidth
+            if discrete_act:
+                carLaneWidth = float(carLane_width_actions[value])
+                remainderLaneLength = totalEdgeWidth - carLaneWidth
+            else:
+                alpha = value  
+                carLaneWidth = float(alpha*totalEdgeWidth)
+                remainderRoad_0 = totalEdgeWidth - carLaneWidth
 
         elif key == "agent 1":
-            # bikeLaneWidth = float(bikeLane_width_actions[value])*remainderLaneLength
-            # pedLaneWidth = float(totalEdgeWidth-(carLaneWidth + bikeLaneWidth))
-
-            beta = value
-            bikeLaneWidth = float(beta*remainderRoad_0)
-            pedLaneWidth = float((1-beta)*remainderRoad_0)
+            if discrete_act:
+                bikeLaneWidth = float(bikeLane_width_actions[value])*remainderLaneLength
+                pedLaneWidth = float(totalEdgeWidth-(carLaneWidth + bikeLaneWidth))
+            else:
+                beta = value
+                bikeLaneWidth = float(beta*remainderRoad_0)
+                pedLaneWidth = float((1-beta)*remainderRoad_0)
 
         elif key == "agent 2":           
             coShare = value      
@@ -129,16 +131,17 @@ def adaptNetwork(base_network,actionDict,routeFileName,sumoCMD, pid, traci):
     
         
     # save state
-    traci.simulation.saveState('environment/savedstate.xml') 
+    traci.simulation.saveState(f'environment/savedstate_{pid}.xml') 
     # load traci simulation   
     # traci.load(['-n', "environment\intersection2.net.xml","--start"])
 
     # traci.load(sumoCMD + ['-n', 'environment/intersection2.net.xml', '-r', routeFileName, '--additional-files',"environment/intersection2.add.xml"])
-    traci.load(sumoCMD + ['-n', modified_netfile, '-r', routeFileName] + ['--load-state', 'environment/savedstate.xml'])
+    # traci.load(sumoCMD + ['-n', modified_netfile, '-r', routeFileName] + ['--load-state', 'environment/savedstate.xml'])
+    traci.load(sumoCMD + ['-n', modified_netfile, '-r', routeFileName])
     # traci.load(['-n', 'environment/intersection2.net.xml', '-r', routeFileName, "--start"]) # should we keep the previous vehic
    
     # load last saved state
-    # traci.simulation.loadState('environment/savedstate.xml')
+    traci.simulation.loadState(f'environment/savedstate_{pid}.xml')
 
     #change lane sharing based on agent choice
     if coShare <= 0.5:

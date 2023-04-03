@@ -9,7 +9,7 @@ class Agent:
         self.tmp_observations_list = [[] for _ in range(agent_num)]
 
 
-    def act(self, states, epnum):
+    def act(self, states, epnum, explore=True):
         raise NotImplementedError
 
     def prepare_states(self, states):

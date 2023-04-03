@@ -15,11 +15,11 @@ class HeuristicAgent(Agent):
         car_length = 5
         ped_length = 0.215
         bike_length = 1.6
-        carflow = self.env._total_occupancy_car_Lane/car_length
-        pedflow = self.env._total_occupancy_ped_Lane/ped_length
-        bikeflow = self.env._total_occupancy_car_Lane/bike_length
+        carflow = max(0.01, self.env._total_occupancy_car_Lane/car_length)
+        pedflow = max(0.01, self.env._total_occupancy_ped_Lane/ped_length)
+        bikeflow = max(0.01, self.env._total_occupancy_bike_Lane/bike_length)
         all_flows = [carflow, pedflow, bikeflow]
-
+        print('all flows',all_flows)
         alpha = np.clip(carflow/sum(all_flows), 0.1,0.9)
         carLaneWidth = min(max(3.2, alpha*totalEdgeWidth), 10.6)
         alpha = carLaneWidth/totalEdgeWidth
@@ -35,6 +35,7 @@ class HeuristicAgent(Agent):
         else:
             coshare = 1
 
+        print('COSHARE', coshare)
         actions = [alpha, beta, coshare]
         for i, action in enumerate(actions):
             if i==2:

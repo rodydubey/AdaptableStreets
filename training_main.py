@@ -23,13 +23,22 @@ from gym_sumo.envs.utils import print_status
 
 np.set_printoptions(precision=3, suppress=True)
 
+generateFlowFiles("Train")
+
 max_episodes = 300
 max_steps = 10
 # number of agents in env, fixed, do not change
 hidden_dim = 64
-batch_size = 256
-actor_learning_rate = 0.001
-critic_learning_rate = 0.005
+discrete_act = True
+
+if discrete_act:
+    batch_size = 512
+    actor_learning_rate = 0.01
+    critic_learning_rate = 0.01
+else:
+    batch_size = 1
+    actor_learning_rate = 0.001
+    critic_learning_rate = 0.005  
 tau = 0.01
 gamma = 0.95
 
@@ -41,13 +50,15 @@ config = {
   "gamma": gamma,
   "max_steps": max_steps,
   "batch_size": batch_size,
-  "hidden_dim": hidden_dim
+  "hidden_dim": hidden_dim,
+  "discrete_act": discrete_act
 }
 
 use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, or disabled
 wandb.init(
   project=f"pytorch_madddpg_SUMO{'MADDPG_Machin'.lower()}",
   tags=["MADDPG_2", "RL"],
+#   mode='disabled',
   mode=use_wandb,
   config=config
 )
@@ -56,7 +67,7 @@ use_gui = False
 mode = 'gui' if (use_gui and display) else 'none'
 
 # configurations
-env = SUMOEnv(mode=mode)
+env = SUMOEnv(mode=mode, discrete_act=discrete_act)
 print(env.action_space)
 print(env.observation_space)
 observe_dim = env._num_observation
@@ -98,8 +109,8 @@ if __name__ == "__main__":
                 step += 1
                 old_states = states
                 # agent model inference
-                actions, action_probs = agent.act(states, episode)
-                print(actions, action_probs[-1])
+                actions, action_probs = agent.act(states, episode, explore=True)
+                print("Actions:", actions, action_probs[-1])
 
                 states, rewards, terminals, info = env.step(actions)
                 states = agent.prepare_states(states)
@@ -125,7 +136,7 @@ if __name__ == "__main__":
 
             # update, update more if episode is longer, else less
             act_loss, crit_loss = None, None
-            if episode > 10 and agent.get_buffer_size()>=batch_size:
+            if episode > 5 and agent.get_buffer_size()>=batch_size:
                 for _ in range(step):
                     act_loss, crit_loss = agent.train()
 
@@ -136,6 +147,7 @@ if __name__ == "__main__":
             wandb.log({'Actor loss': act_loss,
                        'Critic loss': crit_loss,
                        "Average reward": smoothed_total_reward})
+    agent.save('model/Adaptable_street_rl')
     # plot_scores([scores], ['ou'], save_as='normal.png')
 
     plt.plot(scores)
