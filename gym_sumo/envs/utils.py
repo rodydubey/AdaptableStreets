@@ -12,16 +12,19 @@ root = tree.getroot()
 
 # carflowLevelDict = {'l':100,'m':700,'h':1250}
 # bikeflowLevelDict = {'l':22,'m':63,'h':96}
-# pedflowLevelDict = {'l':15,'m':122,'h':250}
+# pedflowLevelDict = {'l':15,'m':122,'h':250}exit
 
-carflowLevelDict = {'l':200,'m':600,'h':1200}
-bikeflowLevelDict = {'l':200,'m':600,'h':1200}
-pedflowLevelDict = {'l':200,'m':600,'h':1200}
+carflowLevelDict = {'l':100,'m':700,'h':1250} # (143,1517) 250 clip at 100 
+bikeflowLevelDict = {'l':22,'m':63,'h':96} #+- (1,144))
+pedflowLevelDict = {'l':15,'m':122,'h':215} #+- (1,358) 125 clip at 1
+
+       
 
 #dictionary of index with traffic flow data first (ped), second(bike), third (car)
-trafficFlowDataAll = {'1':'l_l_l','2':'l_l_m','3':'l_l_h','4':'l_m_l','5':'l_m_m','6':'l_l_h','7':'l_h_l','8':'l_h_m','9':'l_h_h','10':'m_l_m','11':'m_l_m'
-                        ,'12':'m_l_h','13':'m_m_l','14':'m_m_m','15':'m_m_h','16':'m_h_l','17':'m_h_m','18':'m_h_h','19':'h_l_l','20':'h_l_m','21':'h_l_h','22':'h_m_l'
-                        ,'23':'h_m_m','24':'h_m_h','25':'h_h_l','26':'h_h_m','27':'h_h_h'}
+trafficFlowDataAll = {'1':'l_l_l','2':'l_l_m','3':'l_l_h','4':'l_m_l','5':'l_m_m','6':'l_l_h','7':'l_h_l','8':'l_h_m','9':'l_l_h','10':'m_l_m','11':'m_l_m'
+                        ,'12':'m_l_h','13':'m_m_l','14':'l_m_m','15':'m_m_h','16':'m_h_l','17':'m_l_m','18':'m_h_h','19':'h_l_l','20':'h_l_m','21':'h_l_h','22':'l_m_l'
+                        ,'23':'h_m_m','24':'l_m_h','25':'h_h_l','26':'l_h_m','27':'l_m_h','28':'l_l_l','29':'l_l_m','30':'l_l_l','31':'l_l_h','32':'l_m_l'
+                        ,'33':'l_m_m','34':'l_l_l','35':'l_l_l','36':'l_l_l'}
 
 
 def generateFlowFiles(scenario):
@@ -38,9 +41,9 @@ def generateFlowFiles(scenario):
             bikeFlow = x[1]
             carFlow = x[2]
             
-            pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) + np.random.randint(-100,+100)
-            bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow)) + np.random.randint(-100,+100)
-            carFlowCount =  carflowLevelDict.get(str(carFlow)) + np.random.randint(-100,+100)
+            pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) + np.random.randint(-5,+5)
+            bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow)) + np.random.randint(-5,+5)
+            carFlowCount =  carflowLevelDict.get(str(carFlow)) + np.random.randint(-5,+5)
 
             for flows in root.iter('flow'):
                 if flows.attrib['id'] == "f_0":
@@ -145,9 +148,9 @@ def generateFlowFiles(scenario):
             bikeFlow = x[1]
             carFlow = x[2]
             
-            pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) + np.random.randint(-100,+100)
-            bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow)) + np.random.randint(-100,+100)
-            carFlowCount =  carflowLevelDict.get(str(carFlow)) + np.random.randint(-100,+100)
+            pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) + np.random.randint(-5,+5)
+            bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow)) + np.random.randint(-5,+5)
+            carFlowCount =  carflowLevelDict.get(str(carFlow)) + np.random.randint(-5,+5)
 
             for flows in root.iter('flow'):
                 if flows.attrib['id'] == "f_0":
@@ -241,16 +244,23 @@ def generateFlowFiles(scenario):
             tree.write(file_handle)
             file_handle.close()
     else:
-        for i in range(27):            
-            combination = trafficFlowDataAll.get(str(i+1))
+        for i in range(72): 
+            randomIndex = np.random.randint(1,37)          
+            # combination = trafficFlowDataAll.get(str(i+1))
+            combination = trafficFlowDataAll.get(str(randomIndex))
             x = combination.split("_",2)
             pedFlow = x[0]
             bikeFlow = x[1]
             carFlow = x[2]
 
-            pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) 
-            bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow))
-            carFlowCount =  carflowLevelDict.get(str(carFlow)) 
+           # below noise range are coming from the Surge Traffic flow values. 
+            carNoise = np.random.randint(+40,+250)
+            bikeNoise = np.random.randint(-21,+50)
+            pedNoise = np.random.randint(-14,+30)
+
+            pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) + pedNoise
+            bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow)) + bikeNoise
+            carFlowCount =  carflowLevelDict.get(str(carFlow)) + pedNoise
 
             for flows in root.iter('flow'):
                 if flows.attrib['id'] == "f_0":
@@ -339,7 +349,7 @@ def generateFlowFiles(scenario):
                 if flows.attrib['id'] == "f_35":
                     flows.attrib['vehsPerHour'] = repr(carFlowCount)
 
-            filename = "environment/intersection_Slot_" + str(i+1) + ".rou.xml"
+            filename = "environment/newTrainFiles/intersection_Slot_" + str(i+1) + ".rou.xml"
             file_handle = open(filename,"wb")
             tree.write(file_handle)
             file_handle.close()

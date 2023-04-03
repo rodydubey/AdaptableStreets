@@ -1,1 +1,0 @@
-nnictl create --config config.yml --port 8088 --debug

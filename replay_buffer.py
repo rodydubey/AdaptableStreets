@@ -4,7 +4,7 @@ import os
 import sys
 sys.path.append("../src")
 from config import *
-from utils import get_space_dims
+from utilss import get_space_dims
 
 np.random.seed(42)
 class ReplayBuffer():

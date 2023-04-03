@@ -9,7 +9,7 @@ import copy
 from config import *
 from replay_buffer import *
 from networks import *
-from utils import get_space_dims
+from utilss import get_space_dims
 
 np.random.seed(42)
 THETA=0.15
