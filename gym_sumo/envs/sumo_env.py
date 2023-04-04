@@ -157,8 +157,6 @@ class Agent:
             state = [state_0, state_1, state_2, state_3,state_4, state_5]
             # if state_1 > 1 or state_2 > 1:
             # 	print("Agent 2 observation out of bound")
-
-
         # print(state)
         return np.array(state)
         
@@ -552,7 +550,7 @@ class SUMOEnv(Env):
         self.n = 3
         
         # configure spaces
-        self._num_observation = [len(Agent(self, f'agent {i}', 'E0').getState()) for i in range(self.n)]
+        self._num_observation = [len(Agent(self, i, 'E0').getState()) for i in range(self.n)]
         self._num_actions = [len(carLane_width_actions), len(bikeLane_width_actions),2]
         self.action_space = []
         self.observation_space = []

@@ -170,6 +170,7 @@ class MADDPG(object):
                                {'vf_loss': vf_loss,
                                 'pol_loss': pol_loss},
                                self.niter)
+        return vf_loss.detach().numpy(), pol_loss.detach().numpy()
 
     def update_all_targets(self):
         """
@@ -265,6 +266,7 @@ class MADDPG(object):
                      'alg_types': alg_types,
                      'agent_init_params': agent_init_params,
                      'discrete_action': discrete_action}
+        print(init_dict)
         instance = cls(**init_dict)
         instance.init_dict = init_dict
         return instance

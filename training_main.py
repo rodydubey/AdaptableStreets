@@ -6,8 +6,6 @@ import numpy as np
 from gym.spaces import Box, Discrete
 from pathlib import Path
 from torch.autograd import Variable
-# from tensorboardX import SummaryWriter
-
 from utils.buffer import ReplayBuffer
 from algorithms.maddpg import MADDPG
 
@@ -33,7 +31,8 @@ use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, o
 wandb.init(
   project=f"Discrete_Rohit{'MADDPG_'.lower()}",
   tags=["MADDPG_4", "RL"],
-  mode=use_wandb
+  mode=use_wandb,
+#  mode='disabled'
 )
 display = 'DISPLAY' in os.environ
 use_gui = False
@@ -46,7 +45,7 @@ generateFlowFiles("Train")
 def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
     def get_env_fn(rank):
         def init_env():
-            env = SUMOEnv(mode=mode)
+            env = SUMOEnv(mode=mode, edges=['E0'])
             env.seed(seed + rank * 1000)
             np.random.seed(seed + rank * 1000)
             return env
@@ -124,7 +123,7 @@ def run(config):
               
                 torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
                                     requires_grad=False)
-                            for i in range(maddpg.nagents)]
+                            for i in range(maddpg.nagents*len(env.envs[0].edges))]
                 # get actions as torch Variables
                 torch_agent_actions = maddpg.step(torch_obs, explore=True)
                 # convert actions to numpy arrays
@@ -136,27 +135,33 @@ def run(config):
                 obs = next_obs
                 t += config.n_rollout_threads
                 total_reward += float(rewards[0][0])
-                carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
-                    car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane, total_density_car_lane,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService = env.testAnalysisStats()
+                # carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
+                #     car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane, total_density_car_lane,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService = env.testAnalysisStats()
             
                 rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
                 # rewardAgent_2 = 0
-                writer.writerow([carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,\
-                    car_occupancy,bike_occupancy,ped_occupancy,total_density_bike_lane,total_density_ped_lane,total_density_car_lane,rewardAgent_0, rewardAgent_1,rewardAgent_2,levelOfService])
+                # writer.writerow([carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,\
+                #     car_occupancy,bike_occupancy,ped_occupancy,total_density_bike_lane,total_density_ped_lane,total_density_car_lane,rewardAgent_0, rewardAgent_1,rewardAgent_2,levelOfService])
 
+                val_losses = []
+                pol_losses = []
                 if (len(replay_buffer) >= config.batch_size and
                     (t % config.steps_per_update) < config.n_rollout_threads):
                     if USE_CUDA:
-                        maddpg.prep_training(device='gpu')
+                        device = 'gpu'
+                        maddpg.prep_training(device=device)
                     else:
-                        maddpg.prep_training(device='cpu')
+                        device = 'cpu'
+                        maddpg.prep_training(device=device)
                     for u_i in range(config.n_rollout_threads):
                         for a_i in range(maddpg.nagents):
                             sample = replay_buffer.sample(config.batch_size,
                                                         to_gpu=USE_CUDA)
-                            maddpg.update(sample, a_i)
+                            val_loss, pol_loss = maddpg.update(sample, a_i)
+                            val_losses.append(val_loss)
+                            pol_losses.append(pol_loss)
                         maddpg.update_all_targets()
-                    maddpg.prep_rollouts(device='cpu')
+                    maddpg.prep_rollouts(device=device)
             ep_rews = replay_buffer.get_average_rewards(
                 config.episode_length * config.n_rollout_threads)
             # for a_i, a_ep_rew in enumerate(ep_rews):
@@ -170,7 +175,10 @@ def run(config):
             # wandb.log({'# Episodes': ep_i, 
             #     "Average reward": round(np.mean(scores[-10:]), 2)})
             wandb.log({'# Episodes': ep_i, 
-                "Average reward": smoothed_total_reward})
+                "Average reward": smoothed_total_reward,
+                'Actor loss': np.mean(pol_losses),
+                'Critic loss': np.mean(val_losses)
+                })
 
             if ep_i % config.save_interval < config.n_rollout_threads:
                 os.makedirs(run_dir / 'incremental', exist_ok=True)
@@ -184,7 +192,7 @@ def run(config):
     plt.xlabel('episodes')
     plt.ylabel('ave rewards')
     plt.savefig('avgScore.jpg')
-    plt.show()
+    # plt.show()
         # logger.export_scalars_to_json(str(log_dir / 'summary.json'))
         # logger.close()
 
