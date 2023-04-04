@@ -41,7 +41,7 @@ generateFlowFiles("Test 0")
 def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
     def get_env_fn(rank):
         def init_env():
-            env = SUMOEnv(mode=mode)
+            env = SUMOEnv(mode=mode)#, edges=['E0'])
             env.seed(seed + rank * 1000)
             np.random.seed(seed + rank * 1000)
             return env
@@ -68,7 +68,7 @@ def run(config):
     print(env.observation_space)
     env.setInitialParameters(True)
 
-    maddpg = MADDPG.init_from_save(run_dir)
+    edge_agents = [MADDPG.init_from_save(run_dir) for edge in env.envs[0].edges]
     t = 0
     scores = []    
     smoothed_total_reward = 0
@@ -89,20 +89,21 @@ def run(config):
             obs = env.reset(mode)
             step = 0
             # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
-            maddpg.prep_rollouts(device='cpu')
-
+            for maddpg in edge_agents:
+                maddpg.prep_rollouts(device='cpu')
             # explr_pct_remaining = max(0, config.n_exploration_eps - ep_i) / config.n_exploration_eps
             # maddpg.scale_noise(config.final_noise_scale + (config.init_noise_scale - config.final_noise_scale) * explr_pct_remaining)
             # maddpg.reset_noise()
         
             for et_i in range(config.episode_length):
                 step += 1
-               
                 torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
                                     requires_grad=False)
-                            for i in range(maddpg.nagents)]
+                            for i in range(maddpg.nagents*len(env.envs[0].edges))]
                 # get actions as torch Variables
-                torch_agent_actions = maddpg.step(torch_obs, explore=True)
+                torch_agent_actions = []
+                for i, maddpg in enumerate(edge_agents):
+                    torch_agent_actions += maddpg.step(torch_obs[i*3:i*3+3], explore=False)
                 # convert actions to numpy arrays
                 agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
                 # rearrange actions to be per environment
@@ -117,10 +118,10 @@ def run(config):
             
                 # rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
 
-                avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,reward_agent_2,cosharing = env.getTestStats()
+                # avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,reward_agent_2,cosharing = env.getTestStats()
 
                 # rewardAgent_2 = 0
-                writer.writerow([avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,reward_agent_2,cosharing,ep_i])
+                # writer.writerow([avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,reward_agent_2,cosharing,ep_i])
 
             total_reward /= step
             # show reward
@@ -141,7 +142,7 @@ def run(config):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_id", default="simple", type=str)
-    parser.add_argument("--run_id", default="run74", type=str) # run47 is performing the best on training data
+    parser.add_argument("--run_id", default="92noBatchNorm", type=str) # run47 is performing the best on training data
     parser.add_argument("--model_id", default="/model.pt", type=str)
     parser.add_argument("--model_name", default="simple_model", type=str)
     parser.add_argument("--seed",

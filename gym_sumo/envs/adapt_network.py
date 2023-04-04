@@ -2,9 +2,10 @@
 
 import xml.etree.ElementTree as ET
 from sumolib import checkBinary
-import os
 import sys
 import numpy as np
+import subprocess
+
 baselineCarLaneWidth = 9.6
 baselinebicycleLaneWidth = 1.5
 baselinePedestrianLaneWidth = 1.5
@@ -19,13 +20,16 @@ def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
 
 #function
-def adaptNetwork(base_network,actionDict,modelType,name,routeFileName,sumoCMD, pid, traci):
+def adaptNetwork(sumo_edges, base_network,actionDict,modelType,name,routeFileName,sumoCMD, pid, traci):
     # parsing directly.
     tree = ET.parse(base_network)
     root = tree.getroot()
     
     remainderLaneLength = 0
-    for key, value in actionDict.items():
+    edge_props = {}
+
+    for (key, edge_id), value in actionDict.items():
+        props = edge_props.get(edge_id,{})
         if key == "agent 0":
             
             if modelType == "Heuristic":
@@ -33,7 +37,7 @@ def adaptNetwork(base_network,actionDict,modelType,name,routeFileName,sumoCMD, p
             else:
                 carLaneWidth = float(carLane_width_actions[value])
                 remainderLaneLength = totalEdgeWidth - carLaneWidth
-
+            props['carLaneWidth'] = carLaneWidth
         elif key == "agent 1":
             if modelType == "Heuristic":
                 bikeLaneWidth = value
@@ -41,14 +45,15 @@ def adaptNetwork(base_network,actionDict,modelType,name,routeFileName,sumoCMD, p
             else:            
                 bikeLaneWidth = float(bikeLane_width_actions[value])*remainderLaneLength
                 pedLaneWidth = float(totalEdgeWidth-(carLaneWidth + bikeLaneWidth))
-
-        elif key == "agent 2":           
+            props['bikeLaneWidth'] = bikeLaneWidth
+            props['pedLaneWidth'] = pedLaneWidth
+        elif key == "agent 2":   
             if value < 1:
                 coShare = 0    
             else:
-                coShare = 1        
-            
-        
+                coShare = 1  
+            props['coShare'] = coShare
+        edge_props[edge_id] = props    
     # carLaneWidth_agent_0 = 6.2
     # bikeLaneWidth_agent_1 = 3.2
     # pedLaneWidth_agent_1 = 3.2
@@ -58,32 +63,39 @@ def adaptNetwork(base_network,actionDict,modelType,name,routeFileName,sumoCMD, p
     # coShare = 0.6
     # if coShare > 0.5:
     #     coShare = 0.1
-    if coShare <= 0.5:
-        for lanes in root.iter('lane'):
-            if lanes.attrib['id'] == "E0_2":
-                lanes.attrib['width'] = repr(carLaneWidth)
-                # lanes.attrib['width'] = carLaneWidth
-           
-            elif lanes.attrib['id'] == "E0_1":
-                lanes.attrib['width'] = repr(bikeLaneWidth)
-                # lanes.attrib['width'] = bikeWidthTemp
+    # for agent_edge in sumo_edges:
+    print(edge_props)
+    for edge_id, props in edge_props.items():
+        carLaneWidth = props['carLaneWidth']
+        bikeLaneWidth = props['bikeLaneWidth']
+        pedLaneWidth = props['pedLaneWidth']
+        coShare = props['coShare']
+        if coShare <= 0.5:
+            for lanes in root.iter('lane'):
+                if lanes.attrib['id'] == f"{edge_id}_2":
+                    lanes.attrib['width'] = repr(carLaneWidth)
+                    # lanes.attrib['width'] = carLaneWidth
+            
+                elif lanes.attrib['id'] == f"{edge_id}_1":
+                    lanes.attrib['width'] = repr(bikeLaneWidth)
+                    # lanes.attrib['width'] = bikeWidthTemp
 
-            elif lanes.attrib['id'] == "E0_0":
-                lanes.attrib['width'] = repr(pedLaneWidth)
-                # lanes.attrib['width'] = bikeWidthTemp
-    else:
-        for lanes in root.iter('lane'):
-            if lanes.attrib['id'] == "E0_2":
-                lanes.attrib['width'] = repr(carLaneWidth)
-                # lanes.attrib['width'] = carLaneWidth
-           
-            elif lanes.attrib['id'] == "E0_0":
-                lanes.attrib['width'] = repr(bikeLaneWidth+pedLaneWidth)
-                # lanes.attrib['width'] = bikeWidthTemp
+                elif lanes.attrib['id'] == f"{edge_id}_0":
+                    lanes.attrib['width'] = repr(pedLaneWidth)
+                    # lanes.attrib['width'] = bikeWidthTemp
+        else:
+            for lanes in root.iter('lane'):
+                if lanes.attrib['id'] == f"{edge_id}_2":
+                    lanes.attrib['width'] = repr(carLaneWidth)
+                    # lanes.attrib['width'] = carLaneWidth
+            
+                elif lanes.attrib['id'] == f"{edge_id}_0":
+                    lanes.attrib['width'] = repr(bikeLaneWidth+pedLaneWidth)
+                    # lanes.attrib['width'] = bikeWidthTemp
 
-            elif lanes.attrib['id'] == "E0_1":
-                lanes.attrib['width'] = repr(0)
-                # lanes.attrib['width'] = bikeWidthTemp
+                elif lanes.attrib['id'] == f"{edge_id}_1":
+                    lanes.attrib['width'] = repr(0)
+                    # lanes.attrib['width'] = bikeWidthTemp
         
         
     #  write xml 
@@ -95,38 +107,8 @@ def adaptNetwork(base_network,actionDict,modelType,name,routeFileName,sumoCMD, p
     # os.system("C:/D/SUMO/SumoFromSource/bin/netconvert.exe -s environment\intersection2.net.xml -o environment\intersection2.net.xml --crossings.guess")
     # os.system("C:/D/SUMO/SumoFromSource/bin/netconvert.exe -s environment\intersection2.net.xml -o environment\intersection2.net.xml")
     # netconvert = checkBinary("netconvert")
-    os.system(f"netconvert -s {modified_netfile} -o {modified_netfile} -W")
+    subprocess.run(f"netconvert -s {modified_netfile} -o {modified_netfile} -W", capture_output=True, shell=True)
     # allVehicles = traci.vehicle.getIDList()
-    
-    # peds= traci.lane.getLastStepVehicleIDs("E0_0")
-    # for ped_id in allVehicles:
-    #     traci.vehicle.changeLane(ped_id,1, 3000)
-
-    # if coShare <= 0.5:
-    #     # print(str(coShare) + "--- NO Co-Sharing")
-    #     disallowed = ['private', 'emergency', 'passenger','authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-    #     disallowed.append('pedestrian')
-    #     traci.lane.setDisallowed('E0_1',disallowed)
-    #     traci.lane.setAllowed('E0_1','bicycle')
-    #     disallowed2 = ['private', 'emergency', 'passenger', 'authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-    #     disallowed2.append('bicycle')
-    #     traci.lane.setDisallowed('E0_0',disallowed2)
-    #     traci.lane.setAllowed('E0_0','pedestrian')
-    # else: 
-    #     # print(str(coShare) + "--- YES Co-Sharing")
-    #     disallowed3 = ['private', 'emergency', 'authority', 'passenger','army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-    #     disallowed3.append('bicycle')
-    #     disallowed3.append('pedestrian')
-    #     traci.lane.setDisallowed('E0_1',disallowed3)
-    #     allowed = []
-    #     allowed.append('bicycle')
-    #     allowed.append('pedestrian')        
-    #     traci.lane.setAllowed('E0_1',allowed)        
-    #     # traci.lane.setDisallowed('E0_0',disallowed3)
-
-    # peds= traci.lane.getLastStepVehicleIDs("E0_0")
-    # for ped_id in allVehicles:
-    #     traci.vehicle.changeLane(ped_id,1, 3000)
    
     
         
@@ -142,54 +124,35 @@ def adaptNetwork(base_network,actionDict,modelType,name,routeFileName,sumoCMD, p
     # load last saved state
     # traci.simulation.loadState('environment/savedstate.xml')
 
-    #change lane sharing based on agent choice
-    if coShare <= 0.5:
-        # print(str(coShare) + "--- NO Co-Sharing")
-        disallowed = ['private', 'emergency', 'passenger','authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-        disallowed.append('pedestrian')
-        traci.lane.setDisallowed('E0_1',disallowed)
-        traci.lane.setAllowed('E0_1','bicycle')
-        disallowed2 = ['private', 'emergency', 'passenger', 'authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-        disallowed2.append('bicycle')
-        traci.lane.setDisallowed('E0_0',disallowed2)
-        traci.lane.setAllowed('E0_0','pedestrian')
-    else: 
-        # print(str(coShare) + "--- YES Co-Sharing")
-        disallowed3 = ['private', 'emergency', 'authority', 'passenger','army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-        disallowed3.append('bicycle')
-        disallowed3.append('pedestrian')
-        traci.lane.setDisallowed('E0_0',disallowed3)
-        allowed = []
-        allowed.append('bicycle')
-        allowed.append('pedestrian')        
-        traci.lane.setAllowed('E0_0',allowed)
-        # peds= traci.lane.getLastStepVehicleIDs("E0_0")
-        # allVehicles = traci.vehicle.getIDList()
-        traci.lane.setDisallowed('E0_1', ["all"])
-        # traci.lane.setAllowed('E0_0','bicycle')
-         #loop through all pedestrian on E0_0 lane and change lane to E0_1
-        # car_list = traci.vehicle.getIDList()
-        
-        # laneIndex = 1
-        # # for ped_id in peds:
-        # #     traci.vehicle.remove(ped_id)
-        # pendingVehicles = traci.simulation.getPendingVehicles()
-        # bikes = traci.lane.getLastStepVehicleIDs("E0_0")
-        # for bike_id in bikes:
-        #     traci.vehicle.changeLane(bike_id,0,4000)
-
-        # peds = traci.lane.getLastStepVehicleIDs("E0_1")
-     
-        # peds = traci.lane.getLastStepVehicleIDs("E0_0")
-        
-        # traci.lane.setDisallowed('E0_0',disallowed3)
-        # if "f_0.17" in traci.vehicle.getIDList():
-        #     traci.vehicle.remove("f_0.17")
-
-    # bikes = traci.vehicle.getIDList()
-    # for bike_id in bikes:
-    #     routeID = traci.vehicle.getRoute(bike_id)
-    #     print(routeID)
-
-    # print('E0_0: ' + str(traci.lane.getAllowed('E0_0')))
-    # print('E0_1: ' + str(traci.lane.getAllowed('E0_1')))
+    for edge_id, props in edge_props.items():
+        carLaneWidth = props['carLaneWidth']
+        bikeLaneWidth = props['bikeLaneWidth']
+        pedLaneWidth = props['pedLaneWidth']
+        coShare = props['coShare']
+        #change lane sharing based on agent choice
+        if coShare <= 0.5:
+            # print(str(coShare) + "--- NO Co-Sharing")
+            disallowed = ['private', 'emergency', 'passenger','authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
+            disallowed.append('pedestrian')
+            traci.lane.setDisallowed(f'{edge_id}_1',disallowed)
+            traci.lane.setAllowed(f'{edge_id}_1','bicycle')
+            disallowed2 = ['private', 'emergency', 'passenger', 'authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
+            disallowed2.append('bicycle')
+            traci.lane.setDisallowed(f'{edge_id}_0',disallowed2)
+            traci.lane.setAllowed(f'{edge_id}_0','pedestrian')
+        else: 
+            # print(str(coShare) + "--- YES Co-Sharing")
+            disallowed3 = ['private', 'emergency', 'authority', 'passenger','army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
+            disallowed3.append('bicycle')
+            disallowed3.append('pedestrian')
+            traci.lane.setDisallowed(f'{edge_id}_0',disallowed3)
+            allowed = []
+            allowed.append('bicycle')
+            allowed.append('pedestrian')        
+            traci.lane.setAllowed(f'{edge_id}_0',allowed)
+            # peds= traci.lane.getLastStepVehicleIDs(f"{edge_id}_0")
+            # allVehicles = traci.vehicle.getIDList()
+            traci.lane.setDisallowed(f'{edge_id}_1', ["all"])
+            # traci.lane.setAllowed(f'{agent_edge}_0','bicycle')
+            #loop through all pedestrian on E0_0 lane and change lane to E0_1
+            # car_list = traci.vehicle.getIDList()
