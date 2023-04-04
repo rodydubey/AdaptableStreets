@@ -1,0 +1,14 @@
+<additional>
+    <!-- <inductionLoop id="L0" lane="E0_0" pos="-10" period="300" file="NUL" detectPersons="walk"/> -->
+    <!-- <inductionLoop id="det_0" lane="E0_0" pos="-10" period="300" file="NUL" detectPersons="walk"/>
+    <inductionLoop id="det_1" lane="E0_1" pos="-10" period="300" file="NUL" />
+    <inductionLoop id="det_2" lane="E0_2" pos="-10" period="300" file="NUL" /> -->
+    <!-- <laneAreaDetector id="det_0" lane="E0_0" pos="-35" length="30" freq="300" file="out.xml" />
+    <laneAreaDetector id="det_1" lane="E0_1" pos="-35" length="30" freq="300" file="out.xml" /> -->
+
+    <laneAreaDetector id="det_0_ped" lane="E0_0" vTypes="DEFAULT_PEDTYPE" pos="-35" length="30" freq="300" file="out.xml" />
+    <laneAreaDetector id="det_0" lane="E0_0" vTypes="DEFAULT_BIKETYPE" pos="-35" length="30" freq="300" file="out.xml" />
+    <laneAreaDetector id="det_1_ped" lane="E0_1" vTypes="DEFAULT_PEDTYPE" pos="-35" length="30" freq="300" file="out.xml" />
+    <laneAreaDetector id="det_1" lane="E0_1" vTypes="DEFAULT_BIKETYPE" pos="-35" length="30" freq="300" file="out.xml" />
+    <laneAreaDetector id="det_2" lane="E0_2" pos="-35" length="30" freq="300" file="out.xml" />
+</additional>

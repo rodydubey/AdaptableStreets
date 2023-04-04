@@ -41,11 +41,12 @@ mode = 'gui' if (use_gui and display) else 'none'
 # mode = 'gui'
 USE_CUDA = False  # torch.cuda.is_available()
 
-generateFlowFiles("Train")
+EDGES = ['E0']
+generateFlowFiles("Train", edges=EDGES)
 def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
     def get_env_fn(rank):
         def init_env():
-            env = SUMOEnv(mode=mode, edges=['E0'])
+            env = SUMOEnv(mode=mode, edges=EDGES)
             env.seed(seed + rank * 1000)
             np.random.seed(seed + rank * 1000)
             return env
@@ -99,8 +100,7 @@ def run(config):
     trainResultFilePath = f"stat_train_{pid}.csv"  
     with open(trainResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Car_Flow_Rate','Bike_Flow_Rate','Ped_Flow_Rate','Car_Lane_Width','Bike_Lane_Width','Ped_Lane_Width','Co_Sharing', \
-                'Total_occupancy_car_Lane','Total_occupancy_bike_Lane','Total_occupancy_ped_Lane','total_density_bike_lane','total_density_ped_lane','total_density_car_lane','RewardAgent_0', 'RewardAgent_1','RewardAgent_2','LevelOfService'])
+        written_headers = False
 
         for ep_i in tqdm(range(0, config.n_episodes, config.n_rollout_threads)):
             total_reward = 0
@@ -135,10 +135,18 @@ def run(config):
                 obs = next_obs
                 t += config.n_rollout_threads
                 total_reward += float(rewards[0][0])
+
+                rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
+                
+                for edge_agent in env.envs[0].edge_agents:
+                    headers, values = edge_agent.testAnalysisStats()
+                    if not written_headers:
+                        writer.writerow(headers + ['RewardAgent_0', 'RewardAgent_1', 'RewardAgent_2'])
+                        written_headers = True
+                    writer.writerow(values + [rewardAgent_0, rewardAgent_1, rewardAgent_2])
                 # carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
                 #     car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane, total_density_car_lane,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService = env.testAnalysisStats()
             
-                rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
                 # rewardAgent_2 = 0
                 # writer.writerow([carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,\
                 #     car_occupancy,bike_occupancy,ped_occupancy,total_density_bike_lane,total_density_ped_lane,total_density_car_lane,rewardAgent_0, rewardAgent_1,rewardAgent_2,levelOfService])
@@ -207,7 +215,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_rollout_threads", default=1, type=int)
     parser.add_argument("--n_training_threads", default=6, type=int)
     parser.add_argument("--buffer_length", default=int(1e6), type=int)
-    parser.add_argument("--n_episodes", default=2000, type=int)
+    parser.add_argument("--n_episodes", default=350, type=int)
     parser.add_argument("--episode_length", default=20, type=int)
     parser.add_argument("--steps_per_update", default=10, type=int)
     parser.add_argument("--batch_size",

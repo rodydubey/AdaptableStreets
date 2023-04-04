@@ -15,17 +15,227 @@ from itertools import combinations, product
 from utilss import get_space_dims
 
 class Agent:
-    def __init__(self, env, n_agent, edge_id):
+    def __init__(self, env, n_agent, edge_agent=None):
+        """Dummy agent object"""
+        self.edge_agent = edge_agent
+        self.traci = env.traci
+        self.env = env
+
+        self.id = n_agent
+        self.name = f'agent {self.id}'
+    
+    @property
+    def edge_id(self):
+        return self.edge_agent.edge_id
+    
+    def getState(self):
+        """
+        Retrieve the state of the network from sumo. 
+        """
+        agent_name = self.name
+        # state = np.zeros(self._num_observation[agent_idx],dtype=np.float32)
+        normalizeUniqueVehicleCount = 300
+        laneWidthCar = self.traci.lane.getWidth(f'{self.edge_id}_2')
+        laneWidthBike = self.traci.lane.getWidth(f'{self.edge_id}_1')
+        laneWidthPed = self.traci.lane.getWidth(f'{self.edge_id}_0')
+        nLaneWidthCar = np.interp(laneWidthCar, [0,12.6], [0,1])
+        nLaneWidthBike = np.interp(laneWidthBike, [0,12.6], [0,1])
+        nLaneWidthPed = np.interp(laneWidthPed, [0,12.6], [0,1])
+
+        #E0 is for agent 0 and 1, #-E0 is for agent 2 and 3, #E1 is for agent 4 and 5, #-E1 is for agent 6 and 7
+        #E2 is for agent 8 and 9, #-E2 is for agent 10 and 11, #E3 is for agent 12 and 13, #-E3 is for agent 14 and 15
+
+        laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
+        if 'bicycle' in laneVehicleAllowedType:
+            cosharing = 1
+        else:
+            cosharing = 0
+
+        state = []
+
+        if agent_name == "agent 0": # car
+            state_0 = laneWidthCar
+            state_1 = laneWidthBike + laneWidthPed
+            state_2 = self.edge_agent._total_occupancy_car_Lane			
+            state_3 = self.edge_agent._total_density_car_lane
+            
+            state = [state_0, state_1, state_2, state_3]
+            # print(state)
+            # if state_2 > 1 or state_3 > 1:
+            # 	print("Agent 0 observation out of bound")
+
+        xx = self.traci.lanearea.getLastIntervalOccupancy('det_0')	+ self.traci.lanearea.getLastIntervalOccupancy('det_1')
+        yy = self.traci.lanearea.getLastIntervalOccupancy('det_0_ped') + self.traci.lanearea.getLastIntervalOccupancy('det_1_ped')
+        ll = self.traci.lanearea.getLastIntervalMeanSpeed('det_0')	+ self.traci.lanearea.getLastIntervalMeanSpeed('det_1')
+        mm = self.traci.lanearea.getLastIntervalMeanSpeed('det_0_ped') + self.traci.lanearea.getLastIntervalMeanSpeed('det_1_ped')
+        aa = self.traci.lanearea.getLastIntervalVehicleNumber('det_0') + self.traci.lanearea.getLastIntervalVehicleNumber('det_1')
+        bb = self.traci.lanearea.getLastIntervalVehicleNumber('det_0_ped') + self.traci.lanearea.getLastIntervalVehicleNumber('det_1_ped')
+    
+        if agent_name == "agent 1": # bike
+            state_0 = laneWidthBike
+            state_1 = laneWidthPed				
+            state_2 = self.edge_agent._total_occupancy_bike_Lane		
+            state_3 = self.edge_agent._total_occupancy_ped_Lane
+            # if aa + bb:
+            # 	state_2 = (aa)/(aa+bb)
+            # 	state_3 = (xx*aa + yy*bb)/(aa+bb)/100
+            # else:
+            # 	state_2 = 0
+            # 	state_3 = 0
+            state = [state_0, state_1, state_2, state_3]
+            # if state_2 > 1 or state_3 > 1:
+            # 	print("Agent 1 observation out of bound")
+        
+
+        if agent_name == "agent 2": 
+            state_0 = laneWidthCar
+            state_1 = laneWidthBike
+            state_2 = laneWidthPed
+            state_3 = self.edge_agent._total_occupancy_car_Lane	
+            state_4 = self.edge_agent._total_density_car_lane
+            state_5 = self.edge_agent._total_occupancy_bike_Lane
+            state_6 = self.edge_agent._total_occupancy_ped_Lane
+            state_7 = float(cosharing) #flag for cosharing on or off
+            state_8 = float(np.abs(cosharing-1))
+            state_9 = self.edge_agent._total_density_bike_lane
+            state_10 = self.edge_agent._total_density_ped_lane
+            # if aa + bb:
+            # 	state_2 = (ll*aa + mm*bb)/(aa+bb)
+            # 	state_3 = (xx*aa + yy*bb)/(aa+bb)/100
+            # else:
+            # 	state_2 = 0
+            # 	state_3 = 0
+            state = [state_0, state_1, state_2, state_3, state_4, state_5, state_6, state_7, state_8, state_9, state_10]
+            # if state_1 > 1 or state_2 > 1:
+            # 	print("Agent 2 observation out of bound")
+        # print(state)
+        return np.array(state)
+
+    def getReward(self):
+        # defaultCarLength = 5
+        # defaultPedLength = 0.215
+        # defaultBikeLength = 1.6
+        laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
+        cosharing = False
+        if 'bicycle' in laneVehicleAllowedType: 
+            cosharing = True
+        if self.name == "agent 0":
+            carLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_2')
+            if carLaneWidth < 3.2:
+                reward = self.env._fatalPenalty
+                self.done = True
+            else:
+                #occupancy reward. Lower Occupancy higher reward
+                reward_occupancy_car = self.edge_agent._total_density_car_lane/10
+                # reward_car_Stopped_count = self._total_count_waiting_car/(self.action_steps*10)
+                # print("car stopped: " + str(reward_car_Stopped_count))
+                reward = -(reward_occupancy_car)*1.5
+                print("agent 0 reward: " + str(reward))
+            
+
+        elif self.name == "agent 1":
+            bikeLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_1')
+            pedLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_0')
+
+            if cosharing == True:
+                if (bikeLaneWidth + pedLaneWidth) < 2:
+                    reward = self.env._fatalPenalty
+                    self.done = True
+                else:
+                    reward = self.edge_agent._total_occupancy_ped_Lane*10/(self.env.action_steps) # as ped lane will count both waiting bikes and peds since the ped lane is coshared and bike lane width = 0
+                    # print("bike + ped stopped in cosharing: " + str(reward))
+                    reward = -reward*10
+                    print("agent 1 reward: " + str(reward))
+            else:
+                if bikeLaneWidth < 1 or pedLaneWidth < 1:
+                    reward = self.env._fatalPenalty
+                    self.done = True
+                else:
+                    # reward = self.edge_agent._total_count_waiting_ped/(self.env.action_steps*10) + self.edge_agent._total_count_waiting_bike/(self.env.action_steps*10)
+                    reward_occupancy_bike = self.edge_agent._total_occupancy_bike_Lane/self.env.action_steps
+                    reward_occupancy_ped = self.edge_agent._total_occupancy_ped_Lane/self.env.action_steps
+                    # print("bike + ped stopped: " + str(reward))
+                    reward = -((reward_occupancy_bike+reward_occupancy_ped)/2)*100
+                    print("agent 1 reward: " + str(reward))
+                    reward = reward
+        
+        elif self.name == "agent 2":
+            # collisionCount = self.edge_agent._collision_count_bike + self.edge_agent._collision_count_ped
+            # if collisionCount > 50 and cosharing == True:
+            # 	negative_reward_collision = -5
+            # 	reward = negative_reward_collision
+            # elif collisionCount < 50 and cosharing == True:
+            # 	reward = +5
+            # elif collisionCount < 50 and cosharing == False:
+            # 	reward = -5
+            # else:
+            # 	negative_reward_collision = -0.01*collisionCount
+            # 	reward = negative_reward_collision
+            densityThreshold = 1
+            
+            if cosharing:
+                if self.edge_agent._total_density_ped_lane > densityThreshold:
+                    # reward = -(self.edge_agent._total_density_ped_lane - densityThreshold)/self.edge_agent._total_density_ped_lane
+                    reward = -0.75
+                elif self.edge_agent._total_density_ped_lane < densityThreshold:
+                    # reward = (densityThreshold - self.edge_agent._total_density_ped_lane)/densityThreshold
+                    reward = 0.75
+            else:
+                if (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) > 2*densityThreshold:
+                    # reward = (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane - 2*densityThreshold)/(self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane)
+                    reward = 0.75
+                elif (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) < 2*densityThreshold:
+                    # reward = -(2*densityThreshold - self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane)/(2*densityThreshold)
+                    reward = -0.75
+            self.reward_agent_2 = reward
+
+            # levelOfServiceThreshold_A = 5
+            # levelOfServiceThreshold_B = 10
+            # reward = 0.5
+            # self.reward_agent_2 = reward
+            # if cosharing:
+            # 	if self._levelOfService > levelOfServiceThreshold_A:
+            # 		reward = -reward
+            # 	elif self._levelOfService < levelOfServiceThreshold_A:
+            # 		reward = +reward
+                
+            # else:
+            # 	if (self._levelOfService) > levelOfServiceThreshold_A:
+            # 		reward = +reward
+            # 	elif (self._levelOfService) < levelOfServiceThreshold_A:
+            # 		# reward = self.env._fatalPenalty
+            # 		# agent.done = True
+            # 		reward = -reward
+
+            # if cosharing == True:
+            # 	# positive_reward_cosharing = +0.25
+                
+            # 	# negative_reward_collision = -0.01*collisionCount
+                
+                
+            # 	# print("number of collision " + str(collisionCount))
+            # 	# print("agent 2 reward: " + str(reward))
+            # else:
+            # 	# positive_reward_cosharing = -0.25  #25 collisions and below is
+                
+            # 	# print("agent 2 reward: " + str(reward))
+            # # collisionCount = self._collision_count_bike/self.env.action_steps + self._collision_count_ped/self.action_steps
+            # flowrate = float(self.FlowRateStatsFromRouteFile()[-1])/1200
+            # if flowrate<0.5 and cosharing:
+            # 	reward = 1
+            # else:
+            # 	reward = -1
+            self.reward_agent_2 = reward
+            print("Agent 2 Reward :", self.reward_agent_2)
+
+        return reward
+    
+class EdgeAgent:
+    def __init__(self, env, edge_id):
         """Dummy agent object"""
         self.edge_id = edge_id
         self.traci = env.traci
         self.env = env
-        # self.actor_dims = get_space_dims(env.observation_space[n_agent])
-        # self.n_actions = get_space_dims(env.action_space[n_agent])
-        
-        self.id = n_agent
-        self.name = f'agent {self.id}'
-        # self.agent_name = "agent_number_{}".format(n_agent)
         self.resetAllVariables()
     
     def resetAllVariables(self):
@@ -78,89 +288,6 @@ class Agent:
         self._total_hinderance_bike_ped = 0
         self._total_hinderance_ped_ped = 0
         self._levelOfService = 0 
-
-    def getState(self):
-        """
-        Retrieve the state of the network from sumo. 
-        """
-        agent_name = self.name
-        # state = np.zeros(self._num_observation[agent_idx],dtype=np.float32)
-        normalizeUniqueVehicleCount = 300
-        laneWidthCar = self.traci.lane.getWidth(f'{self.edge_id}_2')
-        laneWidthBike = self.traci.lane.getWidth(f'{self.edge_id}_1')
-        laneWidthPed = self.traci.lane.getWidth(f'{self.edge_id}_0')
-        nLaneWidthCar = np.interp(laneWidthCar, [0,12.6], [0,1])
-        nLaneWidthBike = np.interp(laneWidthBike, [0,12.6], [0,1])
-        nLaneWidthPed = np.interp(laneWidthPed, [0,12.6], [0,1])
-
-        #E0 is for agent 0 and 1, #-E0 is for agent 2 and 3, #E1 is for agent 4 and 5, #-E1 is for agent 6 and 7
-        #E2 is for agent 8 and 9, #-E2 is for agent 10 and 11, #E3 is for agent 12 and 13, #-E3 is for agent 14 and 15
-
-        laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
-        if 'bicycle' in laneVehicleAllowedType:
-            cosharing = 1
-        else:
-            cosharing = 0
-
-        state = []
-
-        if agent_name == "agent 0": # car
-            state_0 = laneWidthCar
-            state_1 = laneWidthBike + laneWidthPed
-            state_2 = self._total_occupancy_car_Lane			
-            state_3 = self._total_density_car_lane
-            
-            state = [state_0, state_1, state_2, state_3]
-            # print(state)
-            # if state_2 > 1 or state_3 > 1:
-            # 	print("Agent 0 observation out of bound")
-
-        xx = self.traci.lanearea.getLastIntervalOccupancy('det_0')	+ self.traci.lanearea.getLastIntervalOccupancy('det_1')
-        yy = self.traci.lanearea.getLastIntervalOccupancy('det_0_ped') + self.traci.lanearea.getLastIntervalOccupancy('det_1_ped')
-        ll = self.traci.lanearea.getLastIntervalMeanSpeed('det_0')	+ self.traci.lanearea.getLastIntervalMeanSpeed('det_1')
-        mm = self.traci.lanearea.getLastIntervalMeanSpeed('det_0_ped') + self.traci.lanearea.getLastIntervalMeanSpeed('det_1_ped')
-        aa = self.traci.lanearea.getLastIntervalVehicleNumber('det_0') + self.traci.lanearea.getLastIntervalVehicleNumber('det_1')
-        bb = self.traci.lanearea.getLastIntervalVehicleNumber('det_0_ped') + self.traci.lanearea.getLastIntervalVehicleNumber('det_1_ped')
-    
-        if agent_name == "agent 1": # bike
-            state_0 = laneWidthBike
-            state_1 = laneWidthPed				
-            state_2 = self._total_occupancy_bike_Lane		
-            state_3 = self._total_occupancy_ped_Lane
-            # if aa + bb:
-            # 	state_2 = (aa)/(aa+bb)
-            # 	state_3 = (xx*aa + yy*bb)/(aa+bb)/100
-            # else:
-            # 	state_2 = 0
-            # 	state_3 = 0
-            state = [state_0, state_1, state_2, state_3]
-            # if state_2 > 1 or state_3 > 1:
-            # 	print("Agent 1 observation out of bound")
-        
-
-        if agent_name == "agent 2": 
-            state_0 = laneWidthCar
-            state_1 = laneWidthBike
-            state_2 = laneWidthPed
-            state_3 = self._total_occupancy_car_Lane	
-            state_4 = self._total_density_car_lane
-            state_5 = self._total_occupancy_bike_Lane
-            state_6 = self._total_occupancy_ped_Lane
-            state_7 = float(cosharing) #flag for cosharing on or off
-            state_8 = float(np.abs(cosharing-1))
-            state_9 = self._total_density_bike_lane
-            state_10 = self._total_density_ped_lane
-            # if aa + bb:
-            # 	state_2 = (ll*aa + mm*bb)/(aa+bb)
-            # 	state_3 = (xx*aa + yy*bb)/(aa+bb)/100
-            # else:
-            # 	state_2 = 0
-            # 	state_3 = 0
-            state = [state_0, state_1, state_2, state_3, state_4, state_5, state_6, state_7, state_8, state_9, state_10]
-            # if state_1 > 1 or state_2 > 1:
-            # 	print("Agent 2 observation out of bound")
-        # print(state)
-        return np.array(state)
         
     def collectObservation(self):
         laneWidthCar = self.traci.lane.getWidth(f'{self.edge_id}_2')
@@ -283,126 +410,6 @@ class Agent:
             # self._collision_count_ped += pedCollisionCount
 
 
-
-    def getReward(self):
-        # defaultCarLength = 5
-        # defaultPedLength = 0.215
-        # defaultBikeLength = 1.6
-        laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
-        cosharing = False
-        if 'bicycle' in laneVehicleAllowedType: 
-            cosharing = True
-        if self.name == "agent 0":
-            carLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_2')
-            if carLaneWidth < 3.2:
-                reward = self.env._fatalPenalty
-                self.done = True
-            else:
-                #occupancy reward. Lower Occupancy higher reward
-                reward_occupancy_car = self._total_density_car_lane/10
-                # reward_car_Stopped_count = self._total_count_waiting_car/(self.action_steps*10)
-                # print("car stopped: " + str(reward_car_Stopped_count))
-                reward = -(reward_occupancy_car)*1.5
-                print("agent 0 reward: " + str(reward))
-            
-
-        elif self.name == "agent 1":
-            bikeLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_1')
-            pedLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_0')
-
-            if cosharing == True:
-                if (bikeLaneWidth + pedLaneWidth) < 2:
-                    reward = self.env._fatalPenalty
-                    self.done = True
-                else:
-                    reward = self._total_occupancy_ped_Lane*10/(self.env.action_steps) # as ped lane will count both waiting bikes and peds since the ped lane is coshared and bike lane width = 0
-                    # print("bike + ped stopped in cosharing: " + str(reward))
-                    reward = -reward*10
-                    print("agent 1 reward: " + str(reward))
-            else:
-                if bikeLaneWidth < 1 or pedLaneWidth < 1:
-                    reward = self.env._fatalPenalty
-                    self.done = True
-                else:
-                    # reward = self._total_count_waiting_ped/(self.env.action_steps*10) + self._total_count_waiting_bike/(self.env.action_steps*10)
-                    reward_occupancy_bike = self._total_occupancy_bike_Lane/self.env.action_steps
-                    reward_occupancy_ped = self._total_occupancy_ped_Lane/self.env.action_steps
-                    # print("bike + ped stopped: " + str(reward))
-                    reward = -((reward_occupancy_bike+reward_occupancy_ped)/2)*100
-                    print("agent 1 reward: " + str(reward))
-                    reward = reward
-        
-        elif self.name == "agent 2":
-            # collisionCount = self._collision_count_bike + self._collision_count_ped
-            # if collisionCount > 50 and cosharing == True:
-            # 	negative_reward_collision = -5
-            # 	reward = negative_reward_collision
-            # elif collisionCount < 50 and cosharing == True:
-            # 	reward = +5
-            # elif collisionCount < 50 and cosharing == False:
-            # 	reward = -5
-            # else:
-            # 	negative_reward_collision = -0.01*collisionCount
-            # 	reward = negative_reward_collision
-            densityThreshold = 1
-            
-            if cosharing:
-                if self._total_density_ped_lane > densityThreshold:
-                    # reward = -(self._total_density_ped_lane - densityThreshold)/self._total_density_ped_lane
-                    reward = -0.75
-                elif self._total_density_ped_lane < densityThreshold:
-                    # reward = (densityThreshold - self._total_density_ped_lane)/densityThreshold
-                    reward = 0.75
-            else:
-                if (self._total_density_ped_lane + self._total_density_bike_lane) > 2*densityThreshold:
-                    # reward = (self._total_density_ped_lane + self._total_density_bike_lane - 2*densityThreshold)/(self._total_density_ped_lane + self._total_density_bike_lane)
-                    reward = 0.75
-                elif (self._total_density_ped_lane + self._total_density_bike_lane) < 2*densityThreshold:
-                    # reward = -(2*densityThreshold - self._total_density_ped_lane + self._total_density_bike_lane)/(2*densityThreshold)
-                    reward = -0.75
-            self.reward_agent_2 = reward
-
-            # levelOfServiceThreshold_A = 5
-            # levelOfServiceThreshold_B = 10
-            # reward = 0.5
-            # self.reward_agent_2 = reward
-            # if cosharing:
-            # 	if self._levelOfService > levelOfServiceThreshold_A:
-            # 		reward = -reward
-            # 	elif self._levelOfService < levelOfServiceThreshold_A:
-            # 		reward = +reward
-                
-            # else:
-            # 	if (self._levelOfService) > levelOfServiceThreshold_A:
-            # 		reward = +reward
-            # 	elif (self._levelOfService) < levelOfServiceThreshold_A:
-            # 		# reward = self.env._fatalPenalty
-            # 		# agent.done = True
-            # 		reward = -reward
-
-            # if cosharing == True:
-            # 	# positive_reward_cosharing = +0.25
-                
-            # 	# negative_reward_collision = -0.01*collisionCount
-                
-                
-            # 	# print("number of collision " + str(collisionCount))
-            # 	# print("agent 2 reward: " + str(reward))
-            # else:
-            # 	# positive_reward_cosharing = -0.25  #25 collisions and below is
-                
-            # 	# print("agent 2 reward: " + str(reward))
-            # # collisionCount = self._collision_count_bike/self.env.action_steps + self._collision_count_ped/self.action_steps
-            # flowrate = float(self.FlowRateStatsFromRouteFile()[-1])/1200
-            # if flowrate<0.5 and cosharing:
-            # 	reward = 1
-            # else:
-            # 	reward = -1
-            self.reward_agent_2 = reward
-            print("Agent 2 Reward :", self.reward_agent_2)
-
-        return reward
-
     def LevelOfService(self,coSharing):
         # It is a function of lane width, total vehicle number, hindrance_bb,hinderence_cc,hindrance_bc}
         self.w_lane_width = 0.3
@@ -438,6 +445,56 @@ class Agent:
         if total_los <0:
             total_los = 0
         return total_los
+
+    def testAnalysisStats(self):
+        bikeLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_1')
+        pedlLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_0')
+        carLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_2')
+        laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
+        if 'bicycle' in laneVehicleAllowedType:
+            cosharing = 1
+        else:
+            cosharing = 0
+
+        
+        self._carFlow,self._bikeFlow,self._pedFlow = self.FlowRateStatsFromRouteFile()
+        
+        output_headers = ['edge_id', 'Car_Flow_Rate', 'Bike_Flow_Rate', 'Ped_Flow_Rate', 'Car_Lane_Width', 'Bike_Lane_Width', 
+                          'Ped_Lane_Width', 'Co_Sharing', 'Total_occupancy_car_Lane', 'Total_occupancy_bike_Lane', 
+                          'Total_occupancy_ped_Lane', 'total_density_bike_lane', 'total_density_ped_lane', 
+                          'total_density_car_lane', 'LevelOfService']
+        output_vals = [self.edge_id, self._carFlow, self._bikeFlow, self._pedFlow, carLaneWidth, bikeLaneWidth, pedlLaneWidth, cosharing, 
+                    #    self._total_mean_speed_car, self._total_mean_speed_bike, self._total_mean_speed_ped, 
+                    #    self._total_count_waiting_car, self._total_count_waiting_bike, self._total_count_waiting_ped, self._total_unique_car_count, self._total_unique_bike_count, self._total_unique_ped_count,
+                       self._total_occupancy_car_Lane, self._total_occupancy_bike_Lane, self._total_occupancy_ped_Lane, 
+                    #    self._collision_count_bike, self._collision_count_ped, 
+                       self._total_density_bike_lane, self._total_density_ped_lane, self._total_density_car_lane,
+                    #    self._total_hinderance_bike_bike, self._total_hinderance_bike_ped, self._total_hinderance_ped_ped, 
+                       self._levelOfService]
+        # carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,
+        # total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
+        
+        # car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane, total_density_car_lane,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService
+        
+        # carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,\
+        # car_occupancy,bike_occupancy,ped_occupancy,total_density_bike_lane,total_density_ped_lane,total_density_car_lane,rewardAgent_0, rewardAgent_1,rewardAgent_2,levelOfService
+        return output_headers, output_vals
+    
+    def FlowRateStatsFromRouteFile(self):
+        tree = ET.parse(self.env._routeFileName)
+        root = tree.getroot()
+        vehsPerHour = 0
+        bikesPerHour = 0
+        pedsPerHour = 0
+        for flows in root.iter('flow'):		
+            if flows.attrib['id'] == f"{self.edge_id}_f_2":
+                vehsPerHour = flows.attrib['vehsPerHour']
+            elif flows.attrib['id'] == f"{self.edge_id}_f_1":
+                bikesPerHour = flows.attrib['vehsPerHour']
+            elif flows.attrib['id'] == f"{self.edge_id}_f_0":
+                pedsPerHour = flows.attrib['vehsPerHour']
+
+        return vehsPerHour,bikesPerHour,pedsPerHour
 
 class SUMOEnv(Env):
     metadata = {'render.modes': ['human', 'rgb_array','state_pixels']}
@@ -479,52 +536,6 @@ class SUMOEnv(Env):
         self.sumo_running = False
         self.viewer = None
         self.firstTimeFlag = True
-        # self.coShareValue = 0
-        # self._total_vehicle_passed_agent_0 = 0 
-        # self._total_pedestrian_passed_agent_1 = 0
-        # self._total_bike_passed_agent_1 = 0
-        # self._total_vehicle_on_lane_agent_0 = 0
-        # self._total_bike_on_lane_agent_1 = 0
-        # self._total_ped_on_lane_agent_1 = 0
-        # self._density = 0
-        # self._avg_ped_distance_agent_1 = 0
-        # self._avg_bike_distance_agent_1 = 0
-        # self._queue_Length_car_agent_0 = 0
-        # self._queue_Length_ped_agent_1 = 0
-        # self._queue_Length_bike_agent_1 = 0
-        # self._queue_Count_car_agent_0 = 0
-        # self._queue_Count_ped_agent_1 = 0
-        # self._queue_Count_bike_agent_1 = 0
-        # self._total_vehicle_passed_agent_2 = 0 
-        # self._unique_car_count_list = []
-        # self._unique_ped_count_list = []
-        # self._unique_bike_count_list = []
-        # self._total_waiting_time_car = 0
-        # self._total_unique_car_count = 0
-        # self._total_unique_bike_count = 0
-        # self._total_unique_ped_count = 0
-        # self._total_occupancy_car_Lane = 0
-        # self._total_occupancy_bike_Lane = 0
-        # self._total_occupancy_ped_Lane = 0
-        # self._total_count_waiting_car = 0
-        # self._total_mean_speed_car = 0
-        # self._total_mean_speed_bike = 0
-        # self._total_mean_speed_ped = 0
-        # self._total_count_waiting_bike = 0
-        # self._total_count_waiting_ped = 0
-        # self._collision_count_bike = 0
-        # self._collision_count_ped = 0
-        # self._EmergencyBraking_count_bike = 0
-        # self._EmergencyBraking_count_ped = 0
-        # self._total_density_bike_lane = 0
-        # self._total_density_ped_lane = 0
-        # self._total_density_car_lane = 0
-        # self._total_hinderance_bike_bike = 0
-        # self._total_hinderance_bike_ped = 0
-        # self._total_hinderance_ped_ped = 0
-        # self._levelOfService = 0
-        # self._currentReward = []
-        # self._lastReward = 0
         # self.observation = self.reset()
         self._slotId = 0
         self._carQueueLength = 0
@@ -552,7 +563,8 @@ class SUMOEnv(Env):
         self.n = 3
         
         # configure spaces
-        self._num_observation = [len(Agent(self, i, 'E0').getState()) for i in range(self.n)]
+        self.edge_agents = [EdgeAgent(self, edge_id) for edge_id in self.edges]
+        self._num_observation = [len(Agent(self, i, self.edge_agents[0]).getState()) for i in range(self.n)]
         self._num_actions = [len(carLane_width_actions), len(bikeLane_width_actions),2]
         self.action_space = []
         self.observation_space = []
@@ -568,7 +580,7 @@ class SUMOEnv(Env):
             # 	self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation,)))
             # else:
             # 	self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation+1,)))
-        self.agents = self.createNAgents(self.edges)
+        self.agents = self.createNAgents(self.edge_agents)
         # self.action_space = spaces.Box(low=np.array([0]), high= np.array([+1])) # Beta value 
         # self.observation_space = spaces.Box(low=0, high=1, shape=(np.shape(self.observation)))
         # self.observation_space.append(spaces.Box(low=-np.inf, high=+np.inf, shape=(6,), dtype=np.float32))
@@ -582,12 +594,14 @@ class SUMOEnv(Env):
             #training
             self._scenario = "Train"
 
-    def createNAgents(self, edges):
+    def createNAgents(self, edge_agents):
 
         agents = []
-        for j, edge_id in enumerate(self.edges):
+        for j, edge_agent in enumerate(edge_agents):
+            edge_id = edge_agent.edge_id
+            # edge_agents.append(edge_agent)
             for agent_id in range(0,self.n): #fix this number 3
-                agents.append(Agent(self, agent_id, edge_id))
+                agents.append(Agent(self, agent_id, edge_agent))
         return agents
     
     # Edge E0 - Agent 1 and Agent 2
@@ -644,21 +658,7 @@ class SUMOEnv(Env):
 
         return vehsPerHour
 
-    def FlowRateStatsFromRouteFile(self):
-        tree = ET.parse(self._routeFileName)
-        root = tree.getroot()
-        vehsPerHour = 0
-        bikesPerHour = 0
-        pedsPerHour = 0
-        for flows in root.iter('flow'):		
-            if flows.attrib['id'] == "f_2":
-                vehsPerHour = flows.attrib['vehsPerHour']
-            elif flows.attrib['id'] == "f_1":
-                bikesPerHour = flows.attrib['vehsPerHour']
-            elif flows.attrib['id'] == "f_0":
-                pedsPerHour = flows.attrib['vehsPerHour']
 
-        return vehsPerHour,bikesPerHour,pedsPerHour
 
     # def getActionStateAfterWarmUpPeriod(self):
     # 	#record observatinos for each agent
@@ -679,8 +679,8 @@ class SUMOEnv(Env):
     def reset(self,mode):		
         self._sumo_step = 0
         # self._scenario = "Train"
-        for agent in self.agents:
-            agent.resetAllVariables()
+        for edge_agent in self.edge_agents:
+            edge_agent.resetAllVariables()
         if mode == 'none':
             self._scenario == "Test"
         else:
@@ -731,10 +731,11 @@ class SUMOEnv(Env):
         
                 
         #record observatinos for each agent
-        for agent in self.agents:
-            agent._total_unique_car_count = len(np.unique(np.array(agent._unique_car_count_list)))
-            agent._total_unique_bike_count = len(np.unique(np.array(agent._unique_bike_count_list)))
-            agent._total_unique_ped_count = len(np.unique(np.array(agent._unique_ped_count_list)))
+        for edge_agent in self.edge_agents:
+            edge_agent._total_unique_car_count = len(np.unique(np.array(edge_agent._unique_car_count_list)))
+            edge_agent._total_unique_bike_count = len(np.unique(np.array(edge_agent._unique_bike_count_list)))
+            edge_agent._total_unique_ped_count = len(np.unique(np.array(edge_agent._unique_ped_count_list)))
+        for agent in self.agents:   
             agent.done = False
             obs_n.append(self._get_obs(agent))
         return obs_n
@@ -913,8 +914,8 @@ class SUMOEnv(Env):
         return avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,self.reward_agent_2,cosharing
     
     def collectObservation(self):
-        for agent in self.agents:
-            agent.collectObservation()
+        for edge_agent in self.edge_agents:
+            edge_agent.collectObservation()
 
 
 
@@ -1045,42 +1046,45 @@ class SUMOEnv(Env):
             simple_actions = self.make_action(action_n)
             # print(simple_actions, [len(i) for i in action_n])
             # print([(agent.name, agent.edge_id) for agent in self.agents])
+            # for i, edge_agent in enumerate(self.edge_agents):
+            #     for j in range(self.n):
             for i, agent in enumerate(self.agents):
                 # index = np.argmax(action_n[i])
                 # temp_action_dict[agent.name] = int(index)
                 #for continous action space
+                # temp_action_dict[(agent.name, edge_agent.edge_id)] = simple_actions[i*self.n+j]
                 temp_action_dict[(agent.name, agent.edge_id)] = simple_actions[i]
                 # action_space_dict[(agent.name, agent.edge_id)] = self.action_space[i//self.n + i%(self.n)]
                 # action_space_dict[(agent.name, agent.edge_id)] = self.action_space[i]
-                if agent.name == "agent 2":
-                    self.coShareValue = simple_actions[i]
-            self._set_action(temp_action_dict,agent)
+                # if agent.name == "agent 2":
+                #     self.coShareValue = simple_actions[i]
+            self._set_action(temp_action_dict)
             actionFlag = False
         if self._scenario == "Train" or self._scenario == "Test":
             #reset all variables
-            for agent in self.agents:
-                agent.resetAllVariables()
-                laneVehicleAllowedType = self.traci.lane.getAllowed(f'{agent.edge_id}_0')
+            for edge_agent in self.edge_agents:
+                edge_agent.resetAllVariables()
+                laneVehicleAllowedType = self.traci.lane.getAllowed(f'{edge_agent.edge_id}_0')
                 if 'bicycle' in laneVehicleAllowedType:
-                    agent.cosharing = True
+                    edge_agent.cosharing = True
                 else:
-                    agent.cosharing = False
+                    edge_agent.cosharing = False
             while self._sumo_step <= self.action_steps:
                 # advance world state	
                 self.traci.simulationStep()
                 self._sumo_step +=1
                 self.collectObservation()
             
-            for agent in self.agents:
-                agent._total_unique_car_count = len(np.unique(np.array(agent._unique_car_count_list).flatten()))
-                agent._total_unique_bike_count = len(np.unique(np.array(agent._unique_bike_count_list).flatten()))
-                agent._total_unique_ped_count = len(np.unique(np.array(agent._unique_ped_count_list).flatten()))
+            for edge_agent in self.edge_agents:
+                edge_agent._total_unique_car_count = len(np.unique(np.array(edge_agent._unique_car_count_list).flatten()))
+                edge_agent._total_unique_bike_count = len(np.unique(np.array(edge_agent._unique_bike_count_list).flatten()))
+                edge_agent._total_unique_ped_count = len(np.unique(np.array(edge_agent._unique_ped_count_list).flatten()))
 
-                agent._levelOfService = agent.LevelOfService(agent.cosharing)
-                print("Level of Service : " + str(agent.LevelOfService(agent.cosharing)))
-                print("Cosharing :", agent.cosharing)
+                edge_agent._levelOfService = edge_agent.LevelOfService(edge_agent.cosharing)
+                print("Level of Service : " + str(edge_agent.LevelOfService(edge_agent.cosharing)))
+                print("Cosharing :", edge_agent.cosharing)
                 
-                print("Density :", (agent._total_density_ped_lane + agent._total_density_bike_lane))
+                print("Density :", (edge_agent._total_density_ped_lane + edge_agent._total_density_bike_lane))
             
         # 	if 'bicycle' in laneVehicleAllowedType:
         # 		cosharing = True
@@ -1207,65 +1211,45 @@ class SUMOEnv(Env):
         return self._currentReward[0],self._currentReward[1],self._currentReward[2]
 
     # set env action for a particular agent
-    def _set_action(self, actionDict, agent, time=None):
+    def _set_action(self, actionDict, time=None):
         # process action
         modeltype = "model"
 
         if modeltype == "Heuristic":
-            car_length = 5
-            ped_length = 0.215
-            bike_length = 1.6
-            totalEdgeWidth = 12.6
-            carflow = max(0.01,agent._total_occupancy_car_Lane/car_length)
-            pedflow = max(0.01,agent._total_occupancy_ped_Lane/ped_length)
-            bikeflow = max(0.01,agent._total_occupancy_bike_Lane/bike_length)
-            
-            all_flows = [carflow, pedflow, bikeflow]
-
-            alpha = np.clip(carflow/sum(all_flows), 0.1,0.9)
-            carLaneWidth = min(max(3.2, alpha*totalEdgeWidth), 10.6)
-            alpha = carLaneWidth/totalEdgeWidth
-
-            remainderRoad_0 = totalEdgeWidth - carLaneWidth
-            beta = np.clip(bikeflow/sum(all_flows[1:]), 0.1,0.9)
-            bikeLaneWidth = max(1.5, beta*remainderRoad_0)
-            beta = bikeLaneWidth/remainderRoad_0
-
-            densityThreshold = 1
-            if (agent._total_density_ped_lane + agent._total_density_bike_lane) > 2*densityThreshold:
-                coshare = 0
-            else:
-                coshare = 1
-
             actions_dict = {}
-            actions_dict[("agent 0", agent.edge_id)] = carLaneWidth
-            actions_dict[("agent 1", agent.edge_id)] = bikeLaneWidth
-            actions_dict[("agent 2", agent.edge_id)] = coshare
-            adaptNetwork(self.edges,self.base_netfile,actions_dict,modeltype,agent.name,self._routeFileName,self.sumoCMD, self.pid, self.traci)
+            for agent in self.edge_agents:
+                car_length = 5
+                ped_length = 0.215
+                bike_length = 1.6
+                totalEdgeWidth = 12.6
+                carflow = max(0.01,agent._total_occupancy_car_Lane/car_length)
+                pedflow = max(0.01,agent._total_occupancy_ped_Lane/ped_length)
+                bikeflow = max(0.01,agent._total_occupancy_bike_Lane/bike_length)
+                
+                all_flows = [carflow, pedflow, bikeflow]
+
+                alpha = np.clip(carflow/sum(all_flows), 0.1,0.9)
+                carLaneWidth = min(max(3.2, alpha*totalEdgeWidth), 10.6)
+                alpha = carLaneWidth/totalEdgeWidth
+
+                remainderRoad_0 = totalEdgeWidth - carLaneWidth
+                beta = np.clip(bikeflow/sum(all_flows[1:]), 0.1,0.9)
+                bikeLaneWidth = max(1.5, beta*remainderRoad_0)
+                beta = bikeLaneWidth/remainderRoad_0
+
+                densityThreshold = 1
+                if (agent._total_density_ped_lane + agent._total_density_bike_lane) > 2*densityThreshold:
+                    coshare = 0
+                else:
+                    coshare = 1
+
+                actions_dict[("agent 0", agent.edge_id)] = carLaneWidth
+                actions_dict[("agent 1", agent.edge_id)] = bikeLaneWidth
+                actions_dict[("agent 2", agent.edge_id)] = coshare
+            adaptNetwork(self.edges,self.base_netfile,actions_dict,modeltype,self._routeFileName,self.sumoCMD, self.pid, self.traci)
         else:
-            adaptNetwork(self.edges,self.base_netfile,actionDict,modeltype,agent.name,self._routeFileName,self.sumoCMD, self.pid, self.traci)
+            adaptNetwork(self.edges,self.base_netfile,actionDict,modeltype,self._routeFileName,self.sumoCMD, self.pid, self.traci)
             
-    def testAnalysisStats(self):
-        bikeLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_1')
-        pedlLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_0')
-        carLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_2')
-        laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
-        cosharing = 999
-        if 'bicycle' in laneVehicleAllowedType:
-            cosharing = 1
-        else:
-            cosharing = 0
-
-        
-        self._carFlow,self._bikeFlow,self._pedFlow = self.FlowRateStatsFromRouteFile()
-        
-        return self._carFlow,self._bikeFlow,self._pedFlow,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,self._total_mean_speed_car,\
-            self._total_mean_speed_bike,self._total_mean_speed_ped,self._total_count_waiting_car,self._total_count_waiting_bike,\
-                self._total_count_waiting_ped,self._total_unique_car_count,self._total_unique_bike_count,self._total_unique_ped_count,\
-                    self._total_occupancy_car_Lane,self._total_occupancy_bike_Lane,self._total_occupancy_ped_Lane,self._collision_count_bike,\
-                        self._collision_count_ped,self._total_density_bike_lane,self._total_density_ped_lane,self._total_density_car_lane, \
-                        self._total_hinderance_bike_bike,self._total_hinderance_bike_ped,self._total_hinderance_ped_ped,self._levelOfService
-
 
     def QueueLength(self):
         return self._carQueueLength, self._bikeQueueLength, self._pedQueueLength
