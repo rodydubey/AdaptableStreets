@@ -139,22 +139,24 @@ class Agent:
         
 
         if agent_name == "agent 2": 
-            state_0 = float(cosharing) #flag for cosharing on or off
-            state_1 = float(np.abs(cosharing-1))
-            state_2 = self._total_density_bike_lane	
-            state_3 = self._total_density_ped_lane
-            state_4 = laneWidthBike
-            state_5 = laneWidthPed
-            # state_6 = float(self._bikeFlow)
-            # state_7 = float(self._pedFlow)
+            state_0 = laneWidthCar
+            state_1 = laneWidthBike
+            state_2 = laneWidthPed
+            state_3 = self._total_occupancy_car_Lane	
+            state_4 = self._total_density_car_lane
+            state_5 = self._total_occupancy_bike_Lane
+            state_6 = self._total_occupancy_ped_Lane
+            state_7 = float(cosharing) #flag for cosharing on or off
+            state_8 = float(np.abs(cosharing-1))
+            state_9 = self._total_density_bike_lane
+            state_10 = self._total_density_ped_lane
             # if aa + bb:
             # 	state_2 = (ll*aa + mm*bb)/(aa+bb)
             # 	state_3 = (xx*aa + yy*bb)/(aa+bb)/100
             # else:
             # 	state_2 = 0
             # 	state_3 = 0
-            # state = [state_0, state_1, state_2, state_3,state_4, state_5, state_6, state_7]
-            state = [state_0, state_1, state_2, state_3,state_4, state_5]
+            state = [state_0, state_1, state_2, state_3, state_4, state_5, state_6, state_7, state_8, state_9, state_10]
             # if state_1 > 1 or state_2 > 1:
             # 	print("Agent 2 observation out of bound")
         # print(state)
