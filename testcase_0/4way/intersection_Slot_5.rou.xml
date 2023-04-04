@@ -1,0 +1,23 @@
+<routes xmlns:ns0="http://www.w3.org/30001/XMLSchema-instance" ns0:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    
+    <flow id="E0_f_0" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="E0" to="E2" vehsPerHour="1" />
+    <flow id="E0_f_1" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="E0" to="E2" vehsPerHour="1" />
+    <flow id="E0_f_2" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="E0" to="E2" vehsPerHour="373" />
+
+    <flow id="-E1_f_0" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="-E1" to="E3" vehsPerHour="1" />
+    <flow id="-E1_f_1" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="-E1" to="E3" vehsPerHour="1" />
+    <flow id="-E1_f_2" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="-E1" to="E3" vehsPerHour="373" />
+
+    <flow id="-E2_f_0" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="-E2" to="-E0" vehsPerHour="1" />
+    <flow id="-E2_f_1" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="-E2" to="-E0" vehsPerHour="1" />
+    <flow id="-E2_f_2" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="-E2" to="-E0" vehsPerHour="373" />
+
+    <flow id="-E3_f_0" type="DEFAULT_PEDTYPE" begin="0.00" color="magenta" from="-E3" to="E1" vehsPerHour="1" />
+    <flow id="-E3_f_1" type="DEFAULT_BIKETYPE" begin="0.00" color="blue" from="-E3" to="E1" vehsPerHour="1" />
+    <flow id="-E3_f_2" type="DEFAULT_VEHTYPE" begin="0.00" color="yellow" from="-E3" to="E1" vehsPerHour="373" />
+    
+    
+    
+    
+
+</routes>
