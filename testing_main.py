@@ -30,7 +30,7 @@ from gym_sumo.envs.utils import plot_scores
 from gym_sumo.envs.utils import print_status
 
 display = 'DISPLAY' in os.environ
-use_gui = True
+use_gui = False
 mode = 'gui' if (use_gui and display) else 'none'
 
 USE_CUDA = False  # torch.cuda.is_available()
@@ -41,7 +41,7 @@ generateFlowFiles("Test 0")
 def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
     def get_env_fn(rank):
         def init_env():
-            env = SUMOEnv(mode=mode)#, edges=['E0'])
+            env = SUMOEnv(mode=mode, edges=['E0'])
             env.seed(seed + rank * 1000)
             np.random.seed(seed + rank * 1000)
             return env
@@ -76,57 +76,61 @@ def run(config):
     testResultFilePath = f"results/static_test_surge_{config.run_id}.csv"  
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
-        # writer.writerow(['Car_Flow_Rate','Bike_Flow_Rate','Ped_Flow_Rate','Car_Lane_Width','Bike_Lane_Width','Ped_Lane_Width','Co_Sharing', \
-        #         'Total_occupancy_car_Lane','Total_occupancy_bike_Lane','Total_occupancy_ped_Lane','total_density_bike_lane','total_density_ped_lane','total_density_car_lane','RewardAgent_0', 'RewardAgent_1','RewardAgent_2','LevelOfService'])
+        written_headers = False
 
-        writer.writerow(['avg_waiting_time_car','avg_waiting_time_bike','avg_waiting_time_ped','avg_queue_length_car','avg_queue_length_bike','avg_queue_length_ped','los',"Reward_Agent_2","cosharing",'timeslot'])
-
-        for ep_i in tqdm(range(0, config.n_episodes, config.n_rollout_threads)):
-            total_reward = 0
-            print("Episodes %i-%i of %i" % (ep_i + 1,
-                                            ep_i + 1 + config.n_rollout_threads,
-                                            config.n_episodes))
-            obs = env.reset(mode)
-            step = 0
-            # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
-            for maddpg in edge_agents:
-                maddpg.prep_rollouts(device='cpu')
-            # explr_pct_remaining = max(0, config.n_exploration_eps - ep_i) / config.n_exploration_eps
-            # maddpg.scale_noise(config.final_noise_scale + (config.init_noise_scale - config.final_noise_scale) * explr_pct_remaining)
-            # maddpg.reset_noise()
-        
-            for et_i in range(config.episode_length):
-                step += 1
-                torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
-                                    requires_grad=False)
-                            for i in range(maddpg.nagents*len(env.envs[0].edges))]
-                # get actions as torch Variables
-                torch_agent_actions = []
-                for i, maddpg in enumerate(edge_agents):
-                    torch_agent_actions += maddpg.step(torch_obs[i*3:i*3+3], explore=False)
-                # convert actions to numpy arrays
-                agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
-                # rearrange actions to be per environment
-                actions = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)]
-                next_obs, rewards, dones, infos = env.step(actions)
-                obs = next_obs
-                t += config.n_rollout_threads
-                total_reward += rewards[0]
-                # carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
-                #     car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane, total_density_car_lane,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService = env.testAnalysisStats()
+        for seed in list(range(42,52))[:1]: # realizations for averaging
+            env.envs[0].set_sumo_seed(seed)
+            env.envs[0].timeOfHour = 1 # hack
+            for ep_i in tqdm(range(0, config.n_episodes, config.n_rollout_threads)):
+                total_reward = 0
+                print("Episodes %i-%i of %i" % (ep_i + 1,
+                                                ep_i + 1 + config.n_rollout_threads,
+                                                config.n_episodes))
+                obs = env.reset(mode)
+                step = 0
+                # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
+                for maddpg in edge_agents:
+                    maddpg.prep_rollouts(device='cpu')
+                # explr_pct_remaining = max(0, config.n_exploration_eps - ep_i) / config.n_exploration_eps
+                # maddpg.scale_noise(config.final_noise_scale + (config.init_noise_scale - config.final_noise_scale) * explr_pct_remaining)
+                # maddpg.reset_noise()
             
-            
-                # rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
+                for et_i in range(config.episode_length):
+                    step += 1
+                    torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
+                                        requires_grad=False)
+                                for i in range(maddpg.nagents*len(env.envs[0].edges))]
+                    # get actions as torch Variables
+                    torch_agent_actions = []
+                    for i, maddpg in enumerate(edge_agents):
+                        torch_agent_actions += maddpg.step(torch_obs[i*3:i*3+3], explore=False)
+                    # convert actions to numpy arrays
+                    agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
+                    # rearrange actions to be per environment
+                    actions = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)]
+                    next_obs, rewards, dones, infos = env.step(actions)
+                    obs = next_obs
+                    t += config.n_rollout_threads
+                    total_reward += rewards[0]
 
-                # avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,reward_agent_2,cosharing = env.getTestStats()
+                    rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
 
-                # rewardAgent_2 = 0
-                # writer.writerow([avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,reward_agent_2,cosharing,ep_i])
+                    for edge_agent in env.envs[0].edge_agents:
+                        headers, values = edge_agent.getTestStats()
+                        if not written_headers:
+                            writer.writerow(headers + ['timeslot', 'seed'])
+                            written_headers = True
+                        writer.writerow(values + [ep_i, seed])
+                    # (edge_id, carFlowRate, bikeFlowRate, pedFlowRate, carLaneWidth, bikeLaneWidth, pedlLaneWidth, cosharing, total_mean_speed_car, total_mean_speed_bike, total_mean_speed_ped, total_waiting_car_count, total_waiting_bike_count, total_waiting_ped_count, total_unique_car_count, total_unique_bike_count, total_unique_ped_count,
+                    #     car_occupancy, bike_occupancy, ped_occupancy, collision_count_bike, collision_count_ped, total_density_bike_lane, total_density_ped_lane, total_density_car_lane, Hinderance_bb, Hinderance_bp, Hinderance_pp, levelOfService) = edge_agent.testAnalysisStats()
 
-            total_reward /= step
-            # show reward
-            smoothed_total_reward = smoothed_total_reward * 0.9 + total_reward * 0.1
-            scores.append(smoothed_total_reward)
+                    # rewardAgent_2 = 0
+                        # writer.writerow([avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,reward_agent_2,cosharing,ep_i])
+
+                total_reward /= step
+                # show reward
+                smoothed_total_reward = smoothed_total_reward * 0.9 + total_reward * 0.1
+                scores.append(smoothed_total_reward)
         
         env.close()
       
@@ -142,7 +146,7 @@ def run(config):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_id", default="simple", type=str)
-    parser.add_argument("--run_id", default="92noBatchNorm", type=str) # run47 is performing the best on training data
+    parser.add_argument("--run_id", default="run94", type=str) # run47 is performing the best on training data
     parser.add_argument("--model_id", default="/model.pt", type=str)
     parser.add_argument("--model_name", default="simple_model", type=str)
     parser.add_argument("--seed",

@@ -187,7 +187,7 @@ class Agent:
                 elif (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) < 2*densityThreshold:
                     # reward = -(2*densityThreshold - self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane)/(2*densityThreshold)
                     reward = -0.75
-            self.reward_agent_2 = reward
+            self.edge_agent.reward_agent_2 = reward
 
             # levelOfServiceThreshold_A = 5
             # levelOfServiceThreshold_B = 10
@@ -225,8 +225,7 @@ class Agent:
             # 	reward = 1
             # else:
             # 	reward = -1
-            self.reward_agent_2 = reward
-            print("Agent 2 Reward :", self.reward_agent_2)
+            print("Agent 2 Reward :", self.edge_agent.reward_agent_2)
 
         return reward
     
@@ -446,6 +445,35 @@ class EdgeAgent:
             total_los = 0
         return total_los
 
+    def getTestStats(self):
+        #returns average waiting time for car, cycle, ped
+        #returns average queue length for car, cycle, ped
+        #returns LOS per step
+
+        avg_waiting_time_car = self._total_waiting_time_car/self.env.action_steps
+        avg_queue_length_car = self._queue_Length_car_agent_0/self.env.action_steps
+
+        avg_waiting_time_bike = self._total_waiting_time_bike/self.env.action_steps
+        avg_queue_length_bike = self._queue_Length_bike_agent_1/self.env.action_steps
+
+        avg_waiting_time_ped = self._total_waiting_time_ped/self.env.action_steps
+        avg_queue_length_ped = self._queue_Length_ped_agent_1/self.env.action_steps
+        los = self._levelOfService
+        laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
+        if 'bicycle' in laneVehicleAllowedType:
+            cosharing = True
+        else:
+            cosharing = False
+
+        headers = ['avg_waiting_time_car', 'avg_waiting_time_bike', 'avg_waiting_time_ped',
+                   'avg_queue_length_car', 'avg_queue_length_bike', 'avg_queue_length_ped',
+                   'los', "Reward_Agent_2", "cosharing", 'edge_id']
+        values = [avg_waiting_time_car, avg_waiting_time_bike, avg_waiting_time_ped,
+                  avg_queue_length_car, avg_queue_length_bike, avg_queue_length_ped,
+                  los, self.reward_agent_2, cosharing, self.edge_id]
+        return headers, values
+
+
     def testAnalysisStats(self):
         bikeLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_1')
         pedlLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_0')
@@ -510,6 +538,7 @@ class SUMOEnv(Env):
         self._mode = mode
         # self._seed(40)
         np.random.seed(42)
+        self.sumo_seed = np.random.randint(69142)
         self.counter = 2
         self.withGUI = mode=='gui'
         self.traci = self.initSimulator(self.withGUI, self.pid)
@@ -523,7 +552,7 @@ class SUMOEnv(Env):
         self._weightBikePed = 2 
         # self._gamma = 0.75
         self._slotId = 1
-        self.timeOfHour = 30
+        self.timeOfHour = 1
         self.base_netfile = "environment/intersection.net.xml"
         self._routeFileName = "environment/intersection_Slot_1.rou.xml" # default name 
         self._max_steps = 24000
@@ -708,7 +737,7 @@ class SUMOEnv(Env):
                 print("Testing 4wayflow")
                 self._routeFileName = "testcase_0/4way/intersection_Slot_" + str(self._slotId) + ".rou.xml"
                 print(self._routeFileName)
-                # self.timeOfHour +=1
+                self.timeOfHour +=1
         else:
             self._slotId = np.random.randint(1, 288)
             self._routeFileName = "testcase_1/intersection_Slot_" + str(self._slotId) + ".rou.xml"
@@ -892,32 +921,9 @@ class SUMOEnv(Env):
 
         return carCollisionCounter,bikeCollisionCounter,pedCollisionCounter
     
-    def getTestStats(self):
-        #returns average waiting time for car, cycle, ped
-        #returns average queue length for car, cycle, ped
-        #returns LOS per step
-
-        avg_waiting_time_car = self._total_waiting_time_car/self.action_steps
-        avg_queue_length_car = self._queue_Length_car_agent_0/self.action_steps
-
-        avg_waiting_time_bike = self._total_waiting_time_bike/self.action_steps
-        avg_queue_length_bike = self._queue_Length_bike_agent_1/self.action_steps
-
-        avg_waiting_time_ped = self._total_waiting_time_ped/self.action_steps
-        avg_queue_length_ped = self._queue_Length_ped_agent_1/self.action_steps
-        los = self._levelOfService
-        laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
-        if 'bicycle' in laneVehicleAllowedType:
-            cosharing = True
-        else:
-            cosharing = False
-        return avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,self.reward_agent_2,cosharing
-    
     def collectObservation(self):
         for edge_agent in self.edge_agents:
             edge_agent.collectObservation()
-
-
 
     def getHinderenaceWhenCosharing(self,laneID):
         h_b_b = 0
@@ -1213,6 +1219,7 @@ class SUMOEnv(Env):
     # set env action for a particular agent
     def _set_action(self, actionDict, time=None):
         # process action
+        # modeltype = "Heuristic"
         modeltype = "model"
 
         if modeltype == "Heuristic":
@@ -1277,7 +1284,7 @@ class SUMOEnv(Env):
         # 				 "--random","-W","--default.carfollowmodel", "IDM","--no-step-log"]
         self.sumoCMD = ["--time-to-teleport.disconnected",str(1),"--ignore-route-errors","--device.rerouting.probability","1","--device.rerouting.period","1",
                         "--pedestrian.striping.dawdling","0.5","--collision.check-junctions", str(True),"--collision.mingap-factor","0","--collision.action", "warn",
-                         "--seed", f"{np.random.randint(69142)}", "-W","--default.carfollowmodel", "IDM","--no-step-log","--statistic-output","output.xml"]
+                         "--seed", f"{self.sumo_seed}", "-W","--default.carfollowmodel", "IDM","--no-step-log","--statistic-output","output.xml"]
         if withGUI:
             sumoBinary = checkBinary('sumo-gui')
             self.sumoCMD += ["--start", "--quit-on-end"]
@@ -1293,6 +1300,9 @@ class SUMOEnv(Env):
         # Initialize the simulation
         traci.start([sumoBinary] + self.sumoCMD + sumoStartArgs)
         return traci
+
+    def set_sumo_seed(self, seed):
+        self.sumo_seed = seed
 
     def closeSimulator(traci):
         traci.close()
