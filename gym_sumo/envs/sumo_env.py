@@ -64,12 +64,12 @@ class Agent:
             # if state_2 > 1 or state_3 > 1:
             # 	print("Agent 0 observation out of bound")
 
-        xx = self.traci.lanearea.getLastIntervalOccupancy('det_0')	+ self.traci.lanearea.getLastIntervalOccupancy('det_1')
-        yy = self.traci.lanearea.getLastIntervalOccupancy('det_0_ped') + self.traci.lanearea.getLastIntervalOccupancy('det_1_ped')
-        ll = self.traci.lanearea.getLastIntervalMeanSpeed('det_0')	+ self.traci.lanearea.getLastIntervalMeanSpeed('det_1')
-        mm = self.traci.lanearea.getLastIntervalMeanSpeed('det_0_ped') + self.traci.lanearea.getLastIntervalMeanSpeed('det_1_ped')
-        aa = self.traci.lanearea.getLastIntervalVehicleNumber('det_0') + self.traci.lanearea.getLastIntervalVehicleNumber('det_1')
-        bb = self.traci.lanearea.getLastIntervalVehicleNumber('det_0_ped') + self.traci.lanearea.getLastIntervalVehicleNumber('det_1_ped')
+        # xx = self.traci.lanearea.getLastIntervalOccupancy('det_0')	+ self.traci.lanearea.getLastIntervalOccupancy('det_1')
+        # yy = self.traci.lanearea.getLastIntervalOccupancy('det_0_ped') + self.traci.lanearea.getLastIntervalOccupancy('det_1_ped')
+        # ll = self.traci.lanearea.getLastIntervalMeanSpeed('det_0')	+ self.traci.lanearea.getLastIntervalMeanSpeed('det_1')
+        # mm = self.traci.lanearea.getLastIntervalMeanSpeed('det_0_ped') + self.traci.lanearea.getLastIntervalMeanSpeed('det_1_ped')
+        # aa = self.traci.lanearea.getLastIntervalVehicleNumber('det_0') + self.traci.lanearea.getLastIntervalVehicleNumber('det_1')
+        # bb = self.traci.lanearea.getLastIntervalVehicleNumber('det_0_ped') + self.traci.lanearea.getLastIntervalVehicleNumber('det_1_ped')
     
         if agent_name == "agent 1": # bike
             state_0 = laneWidthBike
@@ -589,14 +589,16 @@ class SUMOEnv(Env):
         # self._scenario = "Train"
         # set required vectorized gym env property
         self.edges = edges
-        self.n = 3
+        self._num_lane_agents = 3
         
         # configure spaces
         self.edge_agents = [EdgeAgent(self, edge_id) for edge_id in self.edges]
-        self._num_observation = [len(Agent(self, i, self.edge_agents[0]).getState()) for i in range(self.n)]
-        self._num_actions = [len(carLane_width_actions), len(bikeLane_width_actions),2]
+        self.n = len(self.edge_agents)*self._num_lane_agents
+        self._num_observation = [len(Agent(self, i, self.edge_agents[0]).getState()) for i in range(self._num_lane_agents)]*len(self.edge_agents)
+        self._num_actions = [len(carLane_width_actions), len(bikeLane_width_actions),2]*len(self.edge_agents)
         self.action_space = []
         self.observation_space = []
+       
         for i in range(self.n):
             if self._num_actions[i]==1:
                 self.action_space.append(spaces.Box(low=0, high=+1, shape=(1,))) # alpha value
@@ -629,7 +631,7 @@ class SUMOEnv(Env):
         for j, edge_agent in enumerate(edge_agents):
             edge_id = edge_agent.edge_id
             # edge_agents.append(edge_agent)
-            for agent_id in range(0,self.n): #fix this number 3
+            for agent_id in range(0,self._num_lane_agents): #fix this number 3
                 agents.append(Agent(self, agent_id, edge_agent))
         return agents
     
@@ -645,8 +647,8 @@ class SUMOEnv(Env):
     def make_action(self,actions):
         agent_actions = []
         for j, edge_id in enumerate(self.edges):
-            for i in range(0,self.n): #fix this number 3
-                index = np.argmax(actions[j*self.n+i])
+            for i in range(0,self._num_lane_agents): #fix this number 3
+                index = np.argmax(actions[j*self._num_lane_agents+i])
                 agent_actions.append(index)
         return agent_actions
 
@@ -1204,7 +1206,7 @@ class SUMOEnv(Env):
         # reward_n[1] = cooperative_reward
         reward = np.sum(reward_n)
         if self.shared_reward:
-            reward_n = [reward] *self.n
+            reward_n = [reward] *self._num_lane_agents
         print("Reward = " + str(reward_n))
         self._lastReward = reward_n[0]
         # print("reward: " + str(self._lastReward))
