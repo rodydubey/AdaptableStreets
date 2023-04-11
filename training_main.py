@@ -123,7 +123,7 @@ def run(config):
               
                 torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
                                     requires_grad=False)
-                            for i in range(maddpg.nagents*len(env.envs[0].edges))]
+                            for i in range(maddpg.nagents)]
                 # get actions as torch Variables
                 torch_agent_actions = maddpg.step(torch_obs, explore=True)
                 # convert actions to numpy arrays

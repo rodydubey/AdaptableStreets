@@ -1206,7 +1206,7 @@ class SUMOEnv(Env):
         # reward_n[1] = cooperative_reward
         reward = np.sum(reward_n)
         if self.shared_reward:
-            reward_n = [reward] *self._num_lane_agents
+            reward_n = [reward] *self.n
         print("Reward = " + str(reward_n))
         self._lastReward = reward_n[0]
         # print("reward: " + str(self._lastReward))
