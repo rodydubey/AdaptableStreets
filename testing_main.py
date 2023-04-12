@@ -37,7 +37,7 @@ USE_CUDA = False  # torch.cuda.is_available()
 
 # mode = 'gui'
 
-generateFlowFiles("Test 0")
+# generateFlowFiles("Test 0")
 def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
     def get_env_fn(rank):
         def init_env():
@@ -73,20 +73,37 @@ def run(config):
     scores = []    
     smoothed_total_reward = 0
     pid = os.getpid()
-    testResultFilePath = f"results/static_test_surge_{config.run_id}.csv"  
+    start_seed = 42
+    num_seeds = 1
+    # run_mode = 'Test Single Flow'
+    run_mode = 'Test'
+    modeltype = 'static'
+
+    # testResultFilePath = f"results/static_test_surge_{config.run_id}.csv"  
+    # testResultFilePath = f"results/static.csv"  
+    # testResultFilePath = f"results/maddpg_test.csv"  
+    testResultFilePath = f"results/{modeltype}_warmup_factor_10.csv"  
+    # testResultFilePath = f"results/{modeltype}_warmup_factor_3_GUI.csv"  
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
         written_headers = False
 
-        for seed in list(range(42,52))[:1]: # realizations for averaging
+        if num_seeds>1:
+            seed_list = list(range(start_seed,start_seed+num_seeds))
+        else:
+            seed_list = [start_seed]
+        for seed in seed_list: # realizations for averaging
             env.envs[0].set_sumo_seed(seed)
             env.envs[0].timeOfHour = 1 # hack
+            env.envs[0].modeltype = modeltype # hack
+
             for ep_i in tqdm(range(0, config.n_episodes, config.n_rollout_threads)):
                 total_reward = 0
                 print("Episodes %i-%i of %i" % (ep_i + 1,
                                                 ep_i + 1 + config.n_rollout_threads,
                                                 config.n_episodes))
-                obs = env.reset(mode)
+                print("time of hour:", env.envs[0].timeOfHour, env.envs[0]._routeFileName, env.envs[0]._scenario)
+                obs = env.reset(run_mode)
                 step = 0
                 # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
                 for maddpg in edge_agents:
@@ -131,6 +148,7 @@ def run(config):
                 # show reward
                 smoothed_total_reward = smoothed_total_reward * 0.9 + total_reward * 0.1
                 scores.append(smoothed_total_reward)
+                # env.envs[0].nextTimeSlot()
         
         env.close()
       
