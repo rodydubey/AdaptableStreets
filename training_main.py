@@ -31,8 +31,8 @@ use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, o
 wandb.init(
   project=f"Discrete_Rohit{'MADDPG_'.lower()}",
   tags=["MADDPG_4", "RL"],
-  mode=use_wandb,
-#  mode='disabled'
+#   mode=use_wandb,
+  mode='disabled'
 )
 display = 'DISPLAY' in os.environ
 use_gui = False
@@ -41,7 +41,7 @@ mode = 'gui' if (use_gui and display) else 'none'
 # mode = 'gui'
 USE_CUDA = False  # torch.cuda.is_available()
 
-EDGES = ['E0']
+EDGES = ['E0','-E1','-E2','-E3']
 generateFlowFiles("Train", edges=EDGES)
 def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
     def get_env_fn(rank):
@@ -123,7 +123,7 @@ def run(config):
               
                 torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
                                     requires_grad=False)
-                            for i in range(maddpg.nagents*len(env.envs[0].edges))]
+                            for i in range(maddpg.nagents)]
                 # get actions as torch Variables
                 torch_agent_actions = maddpg.step(torch_obs, explore=True)
                 # convert actions to numpy arrays

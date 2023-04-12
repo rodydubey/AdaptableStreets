@@ -690,14 +690,16 @@ class SUMOEnv(Env):
         # self._scenario = "Train"
         # set required vectorized gym env property
         self.edges = edges
-        self.n = 3
+        self._num_lane_agents = 3
         
         # configure spaces
         self.edge_agents = [EdgeAgent(self, edge_id) for edge_id in self.edges]
-        self._num_observation = [len(Agent(self, i, self.edge_agents[0]).getState()) for i in range(self.n)]
-        self._num_actions = [len(carLane_width_actions), len(bikeLane_width_actions),2]
+        self.n = len(self.edge_agents)*self._num_lane_agents
+        self._num_observation = [len(Agent(self, i, self.edge_agents[0]).getState()) for i in range(self._num_lane_agents)]*len(self.edge_agents)
+        self._num_actions = [len(carLane_width_actions), len(bikeLane_width_actions),2]*len(self.edge_agents)
         self.action_space = []
         self.observation_space = []
+       
         for i in range(self.n):
             if self._num_actions[i]==1:
                 self.action_space.append(spaces.Box(low=0, high=+1, shape=(1,))) # alpha value
@@ -730,7 +732,7 @@ class SUMOEnv(Env):
         for j, edge_agent in enumerate(edge_agents):
             edge_id = edge_agent.edge_id
             # edge_agents.append(edge_agent)
-            for agent_id in range(0,self.n): #fix this number 3
+            for agent_id in range(0,self._num_lane_agents): #fix this number 3
                 agents.append(Agent(self, agent_id, edge_agent))
         return agents
     
@@ -746,8 +748,8 @@ class SUMOEnv(Env):
     def make_action(self,actions):
         agent_actions = []
         for j, edge_id in enumerate(self.edges):
-            for i in range(0,self.n): #fix this number 3
-                index = np.argmax(actions[j*self.n+i])
+            for i in range(0,self._num_lane_agents): #fix this number 3
+                index = np.argmax(actions[j*self._num_lane_agents+i])
                 agent_actions.append(index)
         return agent_actions
 
