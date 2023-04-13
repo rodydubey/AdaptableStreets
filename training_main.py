@@ -31,8 +31,8 @@ use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, o
 wandb.init(
   project=f"Discrete_Rohit{'MADDPG_'.lower()}",
   tags=["MADDPG_4", "RL"],
-#   mode=use_wandb,
-  mode='disabled'
+  mode=use_wandb,
+#   mode='disabled'
 )
 display = 'DISPLAY' in os.environ
 use_gui = False
@@ -41,12 +41,14 @@ mode = 'gui' if (use_gui and display) else 'none'
 # mode = 'gui'
 USE_CUDA = False  # torch.cuda.is_available()
 
-EDGES = ['E0','-E1','-E2','-E3']
+EDGES = ['E0']
+# EDGES = ['E0','-E1','-E2','-E3']
 generateFlowFiles("Train", edges=EDGES)
-def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
+joint_agents = len(EDGES)>1
+def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_agents=False):
     def get_env_fn(rank):
         def init_env():
-            env = SUMOEnv(mode=mode, edges=EDGES)
+            env = SUMOEnv(mode=mode, edges=EDGES, joint_agents=joint_agents)
             env.seed(seed + rank * 1000)
             np.random.seed(seed + rank * 1000)
             return env
@@ -79,7 +81,7 @@ def run(config):
         torch.set_num_threads(config.n_training_threads)
 
     env = make_parallel_env(config.env_id, config.n_rollout_threads, config.seed,
-                            config.discrete_action)
+                            config.discrete_action, joint_agents=joint_agents)
     print(env.action_space)
     print(env.observation_space)
     

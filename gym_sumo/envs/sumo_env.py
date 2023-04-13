@@ -630,10 +630,12 @@ class SUMOEnv(Env):
     def __init__(self,reset_callback=None, reward_callback=None,
                  observation_callback=None, info_callback=None,
                  done_callback=None, shared_viewer=True,mode='gui',
-                 edges=['E0', '-E1','-E2', '-E3'], simulation_end=36000):
+                 edges=['E0', '-E1','-E2', '-E3'], simulation_end=36000,
+                 joint_agents=False):
         self.pid = os.getpid()
         self.sumoCMD = []
         self.modeltype = 'model'
+        self.joint_agents = joint_agents
         self.generatedFiles = []
         self._simulation_end = simulation_end
         self._mode = mode
@@ -694,9 +696,13 @@ class SUMOEnv(Env):
         
         # configure spaces
         self.edge_agents = [EdgeAgent(self, edge_id) for edge_id in self.edges]
-        self.n = len(self.edge_agents)*self._num_lane_agents
-        self._num_observation = [len(Agent(self, i, self.edge_agents[0]).getState()) for i in range(self._num_lane_agents)]*len(self.edge_agents)
-        self._num_actions = [len(carLane_width_actions), len(bikeLane_width_actions),2]*len(self.edge_agents)
+        if self.joint_agents:
+            num_agent_factor = len(self.edge_agents)
+        else:
+            num_agent_factor = 1
+        self.n = self._num_lane_agents*num_agent_factor
+        self._num_observation = [len(Agent(self, i, self.edge_agents[0]).getState()) for i in range(self._num_lane_agents)]*num_agent_factor
+        self._num_actions = [len(carLane_width_actions), len(bikeLane_width_actions),2]*num_agent_factor
         self.action_space = []
         self.observation_space = []
        
@@ -1080,8 +1086,8 @@ class SUMOEnv(Env):
                 #     self.coShareValue = simple_actions[i]
             self._set_action(temp_action_dict, self.modeltype)
             actionFlag = False
-            if 'Test' in self._scenario:
-                self.warmup()
+            # if 'Test' in self._scenario:
+            self.warmup()
         if self._scenario in ["Train", "Test", "Test Single Flow"]:
             #reset all variables
             for edge_agent in self.edge_agents:
@@ -1242,9 +1248,9 @@ class SUMOEnv(Env):
                 # carflow = max(0.01,agent._total_occupancy_car_Lane/car_length)
                 # pedflow = max(0.01,agent._total_occupancy_ped_Lane/ped_length)
                 # bikeflow = max(0.01,agent._total_occupancy_bike_Lane/bike_length)
-                carflow = max(0.01,agent._total_unique_car_count/car_length)
-                pedflow = max(0.01,agent._total_unique_ped_count/ped_length)
-                bikeflow = max(0.01,agent._total_unique_bike_count/bike_length)
+                carflow = max(0.01,agent._total_unique_car_count/2)
+                pedflow = max(0.01,agent._total_unique_ped_count)
+                bikeflow = max(0.01,agent._total_unique_bike_count)
                 
                 all_flows = [carflow, pedflow, bikeflow]
 

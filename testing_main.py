@@ -37,11 +37,15 @@ USE_CUDA = False  # torch.cuda.is_available()
 
 # mode = 'gui'
 
+EDGES = ['E0']
+joint_agents = False
+# EDGES = ['E0','-E1','-E2','-E3']
+# joint_agents = True
 # generateFlowFiles("Test 0")
-def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action):
+def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_agents=False):
     def get_env_fn(rank):
         def init_env():
-            env = SUMOEnv(mode=mode, edges=['E0'])
+            env = SUMOEnv(mode=mode, edges=EDGES, joint_agents=joint_agents)
             env.seed(seed + rank * 1000)
             np.random.seed(seed + rank * 1000)
             return env
@@ -63,26 +67,30 @@ def run(config):
         torch.set_num_threads(config.n_training_threads)
 
     env = make_parallel_env(config.env_id, config.n_rollout_threads, config.seed,
-                            config.discrete_action)
+                            config.discrete_action, joint_agents=joint_agents)
     print(env.action_space)
     print(env.observation_space)
     env.setInitialParameters(True)
 
-    edge_agents = [MADDPG.init_from_save(run_dir) for edge in env.envs[0].edges]
+    if joint_agents:
+        edge_agents = [MADDPG.init_from_save(run_dir) for edge in env.envs[0].edges]
+    else:
+        edge_agents = [MADDPG.init_from_save(run_dir)]
+
     t = 0
     scores = []    
     smoothed_total_reward = 0
     pid = os.getpid()
     start_seed = 42
-    num_seeds = 1
+    num_seeds = 20
     # run_mode = 'Test Single Flow'
     run_mode = 'Test'
-    modeltype = 'static'
+    modeltype = 'heuristic'
 
     # testResultFilePath = f"results/static_test_surge_{config.run_id}.csv"  
     # testResultFilePath = f"results/static.csv"  
     # testResultFilePath = f"results/maddpg_test.csv"  
-    testResultFilePath = f"results/{modeltype}_warmup_factor_10.csv"  
+    testResultFilePath = f"results/{modeltype}_warmup_factor_1.csv"  
     # testResultFilePath = f"results/{modeltype}_warmup_factor_3_GUI.csv"  
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
