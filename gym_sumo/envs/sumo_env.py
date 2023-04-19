@@ -896,21 +896,18 @@ class SUMOEnv(gym.Env):
     # 	return self.getState(agent)
 
 
-    def getQueueLength(self,laneID):
+    def getQueueLength(self, laneID):
         allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)
+        lane_length = self.traci.lane.getLength(laneID)
         queueCount = 0
+        queueLength = 0
         if len(allVehicles) > 1:
-            lastMaxPos = 60
             for veh in allVehicles:
                 speed = self.traci.vehicle.getSpeed(veh)
-                pos_p_x = self.traci.vehicle.getPosition(veh)[0]
-                if speed < 0.1 and pos_p_x > -35:					
-                    # pos_p_y = self.traci.vehicle.getPosition(veh)[1]
+                distFromEnd = lane_length - self.traci.vehicle.getLanePosition(veh)
+                if speed < 0.1:
                     queueCount +=1
-                    if pos_p_x < lastMaxPos:
-                        lastMaxPos = pos_p_x
-
-            queueLength = 60 - lastMaxPos
+                    queueLength = max(distFromEnd, queueLength)
         else:
             queueLength = 0
         return queueLength, queueCount
