@@ -18,7 +18,7 @@ import warnings
 warnings.filterwarnings('ignore')
 import wandb
 from argparse import ArgumentParser
-from utils.env_wrappers import SubprocVecEnv, DummyVecEnv
+from stable_baselines3.common.env_util import make_vec_env, DummyVecEnv, SubprocVecEnv
 import time
 import os
 from tqdm import tqdm
@@ -26,6 +26,7 @@ import csv
 from gym_sumo.envs.utils import generateFlowFiles
 from gym_sumo.envs.utils import plot_scores
 from gym_sumo.envs.utils import print_status
+from copy import deepcopy
 
 use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, or disabled
 wandb.init(
@@ -39,12 +40,38 @@ use_gui = False
 mode = 'gui' if (use_gui and display) else 'none'
 
 # mode = 'gui'
+run_mode = 'Train'
 USE_CUDA = False  # torch.cuda.is_available()
 
 EDGES = ['E0']
 # EDGES = ['E0','-E1','-E2','-E3']
 generateFlowFiles("Train", edges=EDGES)
 joint_agents = len(EDGES)>1
+
+env_kwargs = {'mode': mode,
+              'edges': EDGES,
+              'joint_agents': joint_agents}
+
+class CustomVecEnv(DummyVecEnv):
+    def __init__(self, env_fns):
+        super().__init__(env_fns)
+        env = self.envs[0]
+        self.buf_dones = np.zeros((self.num_envs, env.n), dtype=bool)
+        self.buf_rews = np.zeros((self.num_envs, env.n), dtype=np.float32)
+
+    def step_wait(self):
+        for env_idx in range(self.num_envs):
+            obs, self.buf_rews[env_idx], a, self.buf_infos[env_idx] = self.envs[env_idx].step(
+                self.actions[env_idx]
+            )
+            self.buf_dones[env_idx] = a
+            if all(self.buf_dones[env_idx]):
+                # save final observation where user can get it, then reset
+                self.buf_infos[env_idx]["terminal_observation"] = obs
+                obs = self.envs[env_idx].reset()
+            self._save_obs(env_idx, obs)
+        return (self._obs_from_buf(), np.copy(self.buf_rews), np.copy(self.buf_dones), deepcopy(self.buf_infos))
+
 def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_agents=False):
     def get_env_fn(rank):
         def init_env():
@@ -54,7 +81,7 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_ag
             return env
         return init_env
     if n_rollout_threads == 1:
-        return DummyVecEnv([get_env_fn(0)])
+        return CustomVecEnv([get_env_fn(0)])
     else:
         return SubprocVecEnv([get_env_fn(i) for i in range(n_rollout_threads)])
 
@@ -85,16 +112,18 @@ def run(config):
     print(env.action_space)
     print(env.observation_space)
     
-    env.setInitialParameters(False)
+    env.env_method('set_run_mode', run_mode)
+    # env.setInitialParameters(False)
+    env.agent_types = env.get_attr('agent_types')[0]
     maddpg = MADDPG.init_from_env(env, agent_alg=config.agent_alg,
                                   adversary_alg=config.adversary_alg,
                                   tau=config.tau,
                                   lr=config.lr,
                                   hidden_dim=config.hidden_dim)
     replay_buffer = ReplayBuffer(config.buffer_length, maddpg.nagents,
-                                 [obsp.shape[0] for obsp in env.observation_space],
+                                 [obsp.shape[0] for obsp in env.observation_space.spaces.values()],
                                  [acsp.shape[0] if isinstance(acsp, Box) else acsp.n
-                                  for acsp in env.action_space])
+                                  for acsp in env.action_space.spaces])
     t = 0
     scores = []    
     smoothed_total_reward = 0
@@ -109,7 +138,7 @@ def run(config):
             print("Episodes %i-%i of %i" % (ep_i + 1,
                                             ep_i + 1 + config.n_rollout_threads,
                                             config.n_episodes))
-            obs = env.reset(mode)
+            obs = env.reset()
             step = 0
             # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
             maddpg.prep_rollouts(device='cpu')
@@ -122,36 +151,33 @@ def run(config):
             # obs = [i[np.newaxis,:] for i in obs]
             for et_i in range(config.episode_length):
                 step += 1
-              
-                torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
+                torch_obs = [Variable(torch.Tensor(np.vstack(obs[f'agent {i}'])),
                                     requires_grad=False)
                             for i in range(maddpg.nagents)]
+                # torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
+                #                     requires_grad=False)
+                #             for i in range(maddpg.nagents)]
                 # get actions as torch Variables
                 torch_agent_actions = maddpg.step(torch_obs, explore=True)
                 # convert actions to numpy arrays
                 agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
                 # rearrange actions to be per environment
                 actions = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)]
+                # env.envs[0].nextTimeSlot()
                 next_obs, rewards, dones, infos = env.step(actions)
                 replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
                 obs = next_obs
                 t += config.n_rollout_threads
                 total_reward += float(rewards[0][0])
 
-                rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
+                # rewardAgent_0, rewardAgent_1, rewardAgent_2 = env.env_method('rewardAnalysisStats')
                 
-                for edge_agent in env.envs[0].edge_agents:
-                    headers, values = edge_agent.testAnalysisStats()
-                    if not written_headers:
-                        writer.writerow(headers + ['RewardAgent_0', 'RewardAgent_1', 'RewardAgent_2'])
-                        written_headers = True
-                    writer.writerow(values + [rewardAgent_0, rewardAgent_1, rewardAgent_2])
-                # carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,total_mean_speed_car,total_mean_speed_bike,total_mean_speed_ped,total_waiting_car_count,total_waiting_bike_count, total_waiting_ped_count,total_unique_car_count,total_unique_bike_count,total_unique_ped_count, \
-                #     car_occupancy,bike_occupancy,ped_occupancy,collision_count_bike,collision_count_ped,total_density_bike_lane,total_density_ped_lane, total_density_car_lane,Hinderance_bb,Hinderance_bp,Hinderance_pp,levelOfService = env.testAnalysisStats()
-            
-                # rewardAgent_2 = 0
-                # writer.writerow([carFlowRate,bikeFlowRate,pedFlowRate,carLaneWidth,bikeLaneWidth,pedlLaneWidth,cosharing,\
-                #     car_occupancy,bike_occupancy,ped_occupancy,total_density_bike_lane,total_density_ped_lane,total_density_car_lane,rewardAgent_0, rewardAgent_1,rewardAgent_2,levelOfService])
+                # for edge_agent in env.envs[0].edge_agents:
+                #     headers, values = edge_agent.testAnalysisStats()
+                #     if not written_headers:
+                #         writer.writerow(headers + ['RewardAgent_0', 'RewardAgent_1', 'RewardAgent_2'])
+                #         written_headers = True
+                #     writer.writerow(values + [rewardAgent_0, rewardAgent_1, rewardAgent_2])
 
                 val_losses = []
                 pol_losses = []
@@ -215,9 +241,9 @@ if __name__ == '__main__':
                         default=1, type=int,
                         help="Random seed")
     parser.add_argument("--n_rollout_threads", default=1, type=int)
-    parser.add_argument("--n_training_threads", default=6, type=int)
+    parser.add_argument("--n_training_threads", default=4, type=int)
     parser.add_argument("--buffer_length", default=int(1e6), type=int)
-    parser.add_argument("--n_episodes", default=350, type=int)
+    parser.add_argument("--n_episodes", default=500, type=int)
     parser.add_argument("--episode_length", default=20, type=int)
     parser.add_argument("--steps_per_update", default=10, type=int)
     parser.add_argument("--batch_size",

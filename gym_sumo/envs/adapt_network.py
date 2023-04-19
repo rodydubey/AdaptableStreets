@@ -10,7 +10,8 @@ baselineCarLaneWidth = 9.6
 baselinebicycleLaneWidth = 1.5
 baselinePedestrianLaneWidth = 1.5
 totalEdgeWidth = baselineCarLaneWidth + baselinebicycleLaneWidth + baselinePedestrianLaneWidth
-carLane_width_actions = ['3.2','5.4','6.6','7.8','9.6']
+# carLane_width_actions = ['3.2','5.4','6.6','7.8','9.6']
+carLane_width_actions = ['3.2','5.6','6.4','7.8','9.6']
 bikeLane_width_actions = ['0.1','0.2','0.3','0.4','0.5','0.6','0.7','0.8','0.9']
 
 netconvert = checkBinary("netconvert")
@@ -31,7 +32,7 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
 
         for (key, edge_id), value in actionDict.items():
             props = edge_props.get(edge_id,{})
-            if key == "agent 0":
+            if "agent 0" in key:
                 
                 if modelType == "heuristic":
                     carLaneWidth = value
@@ -40,7 +41,7 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
                     carLaneWidth = float(carLane_width_actions[value])
                     remainderLaneLength = totalEdgeWidth - carLaneWidth
                 props['carLaneWidth'] = carLaneWidth
-            elif key == "agent 1":
+            elif "agent 1" in key:
                 if modelType == "heuristic":
                     bikeLaneWidth = value
                     pedLaneWidth = float(totalEdgeWidth-(carLaneWidth + bikeLaneWidth))
@@ -49,7 +50,7 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
                     pedLaneWidth = float(totalEdgeWidth-(carLaneWidth + bikeLaneWidth))
                 props['bikeLaneWidth'] = bikeLaneWidth
                 props['pedLaneWidth'] = pedLaneWidth
-            elif key == "agent 2":   
+            elif "agent 2" in key:   
                 if value < 1:
                     coShare = 0    
                 else:
@@ -57,7 +58,6 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
                 props['coShare'] = coShare
             edge_props[edge_id] = props    
 
-        print('EDGE PROPERTIES', edge_props)
         for edge_id, props in edge_props.items():
             carLaneWidth = props['carLaneWidth']
             bikeLaneWidth = props['bikeLaneWidth']

@@ -20,7 +20,8 @@ import warnings
 warnings.filterwarnings('ignore')
 import wandb
 from argparse import ArgumentParser
-from utils.env_wrappers import SubprocVecEnv, DummyVecEnv
+# from utils.env_wrappers import SubprocVecEnv, DummyVecEnv
+# from stable_baselines3.common.env_util import make_vec_env
 import time
 import os
 from tqdm import tqdm
@@ -37,24 +38,14 @@ USE_CUDA = False  # torch.cuda.is_available()
 
 # mode = 'gui'
 
-EDGES = ['E0']
+# EDGES = ['E0']
 joint_agents = False
-# EDGES = ['E0','-E1','-E2','-E3']
+EDGES = ['E0','-E1','-E2','-E3']
 # joint_agents = True
-# generateFlowFiles("Test 0")
-def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_agents=False):
-    def get_env_fn(rank):
-        def init_env():
-            env = SUMOEnv(mode=mode, edges=EDGES, joint_agents=joint_agents)
-            env.seed(seed + rank * 1000)
-            np.random.seed(seed + rank * 1000)
-            return env
-        return init_env
-    if n_rollout_threads == 1:
-        return DummyVecEnv([get_env_fn(0)])
-    else:
-        return SubprocVecEnv([get_env_fn(i) for i in range(n_rollout_threads)])
-    
+# generateFlowFiles("Test 0") 
+env_kwargs = {'mode': mode,
+              'edges': EDGES,
+              'joint_agents': joint_agents}
 def run(config):
     model_dir = Path('./models') / config.env_id / config.model_name
     curr_run = config.run_id + config.model_id
@@ -66,32 +57,37 @@ def run(config):
     if not USE_CUDA:
         torch.set_num_threads(config.n_training_threads)
 
-    env = make_parallel_env(config.env_id, config.n_rollout_threads, config.seed,
-                            config.discrete_action, joint_agents=joint_agents)
+    # env = make_vec_env(SUMOEnv, n_envs=config.n_rollout_threads, seed=config.seed,
+    #                    env_kwargs=env_kwargs)
+    env = SUMOEnv(**env_kwargs)
+    # env = make_parallel_env(config.env_id, config.n_rollout_threads, config.seed,
+    #                         config.discrete_action, joint_agents=joint_agents)
     print(env.action_space)
     print(env.observation_space)
-    env.setInitialParameters(True)
 
     if joint_agents:
-        edge_agents = [MADDPG.init_from_save(run_dir) for edge in env.envs[0].edges]
-    else:
         edge_agents = [MADDPG.init_from_save(run_dir)]
+    else:
+        edge_agents = [MADDPG.init_from_save(run_dir) for edge in env.edges]
 
     t = 0
     scores = []    
     smoothed_total_reward = 0
     pid = os.getpid()
     start_seed = 42
-    num_seeds = 20
+    num_seeds = 10
     # run_mode = 'Test Single Flow'
     run_mode = 'Test'
-    modeltype = 'heuristic'
+    modeltype = 'model'
+
+    # [_env.set_run_mode(run_mode) for _env in env.envs]
+    env.set_run_mode(run_mode)
 
     # testResultFilePath = f"results/static_test_surge_{config.run_id}.csv"  
-    # testResultFilePath = f"results/static.csv"  
-    # testResultFilePath = f"results/maddpg_test.csv"  
-    testResultFilePath = f"results/{modeltype}_warmup_factor_1.csv"  
-    # testResultFilePath = f"results/{modeltype}_warmup_factor_3_GUI.csv"  
+    # testResultFilePath = f"results/debug.csv"
+    testResultFilePath = f"results/{modeltype}_parallel_deployment.csv"  
+    # testResultFilePath = f"results/{modeltype}_warmup_factor_5.csv"  
+    # testResultFilePath = f"results/{modeltype}_warmup_nosurge.csv"  
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
         written_headers = False
@@ -101,17 +97,18 @@ def run(config):
         else:
             seed_list = [start_seed]
         for seed in seed_list: # realizations for averaging
-            env.envs[0].set_sumo_seed(seed)
-            env.envs[0].timeOfHour = 1 # hack
-            env.envs[0].modeltype = modeltype # hack
+            env.set_sumo_seed(seed)
+            env.timeOfHour = 1 # hack
+            env.modeltype = modeltype # hack
 
             for ep_i in tqdm(range(0, config.n_episodes, config.n_rollout_threads)):
                 total_reward = 0
                 print("Episodes %i-%i of %i" % (ep_i + 1,
                                                 ep_i + 1 + config.n_rollout_threads,
                                                 config.n_episodes))
-                print("time of hour:", env.envs[0].timeOfHour, env.envs[0]._routeFileName, env.envs[0]._scenario)
-                obs = env.reset(run_mode)
+                # print("time of hour:", env.envs[0].timeOfHour, env.envs[0]._routeFileName, env.envs[0]._scenario)
+                obs = env.reset()
+                assert 'Test' in env._scenario
                 step = 0
                 # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
                 for maddpg in edge_agents:
@@ -122,9 +119,9 @@ def run(config):
             
                 for et_i in range(config.episode_length):
                     step += 1
-                    torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
+                    torch_obs = [Variable(torch.Tensor(np.vstack(obs[agent.name]).T),
                                         requires_grad=False)
-                                for i in range(maddpg.nagents*len(env.envs[0].edges))]
+                                for agent in env.agents]# in range(maddpg.nagents*len(env.edges))]
                     # get actions as torch Variables
                     torch_agent_actions = []
                     for i, maddpg in enumerate(edge_agents):
@@ -132,7 +129,7 @@ def run(config):
                     # convert actions to numpy arrays
                     agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
                     # rearrange actions to be per environment
-                    actions = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)]
+                    actions = [ac[0] for ac in agent_actions]
                     next_obs, rewards, dones, infos = env.step(actions)
                     obs = next_obs
                     t += config.n_rollout_threads
@@ -140,7 +137,7 @@ def run(config):
 
                     rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
 
-                    for edge_agent in env.envs[0].edge_agents:
+                    for edge_agent in env.edge_agents:
                         headers, values = edge_agent.getTestStats()
                         if not written_headers:
                             writer.writerow(headers + ['timeslot', 'seed'])
@@ -172,7 +169,8 @@ def run(config):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_id", default="simple", type=str)
-    parser.add_argument("--run_id", default="run94", type=str) # run47 is performing the best on training data
+    # parser.add_argument("--run_id", default="better_train", type=str) # run47 is performing the best on training data
+    parser.add_argument("--run_id", default="run112", type=str) # run47 is performing the best on training data
     parser.add_argument("--model_id", default="/model.pt", type=str)
     parser.add_argument("--model_name", default="simple_model", type=str)
     parser.add_argument("--seed",

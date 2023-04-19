@@ -1,4 +1,4 @@
-from gym import Env
+import gym
 from gym import spaces
 from gym.utils import seeding
 from gym import spaces
@@ -22,7 +22,7 @@ class Agent:
         self.env = env
 
         self.id = n_agent
-        self.name = f'agent {self.id}'
+        self.name = f'{edge_agent.edge_id} agent {self.id}'
     
     @property
     def edge_id(self):
@@ -53,7 +53,7 @@ class Agent:
 
         state = []
 
-        if agent_name == "agent 0": # car
+        if "agent 0" in agent_name: # car
             state_0 = laneWidthCar
             state_1 = laneWidthBike + laneWidthPed
             state_2 = self.edge_agent._total_occupancy_car_Lane			
@@ -71,7 +71,7 @@ class Agent:
         # aa = self.traci.lanearea.getLastIntervalVehicleNumber('det_0') + self.traci.lanearea.getLastIntervalVehicleNumber('det_1')
         # bb = self.traci.lanearea.getLastIntervalVehicleNumber('det_0_ped') + self.traci.lanearea.getLastIntervalVehicleNumber('det_1_ped')
     
-        if agent_name == "agent 1": # bike
+        if "agent 1" in agent_name: # bike
             state_0 = laneWidthBike
             state_1 = laneWidthPed				
             state_2 = self.edge_agent._total_occupancy_bike_Lane		
@@ -87,7 +87,7 @@ class Agent:
             # 	print("Agent 1 observation out of bound")
         
 
-        if agent_name == "agent 2": 
+        if "agent 2" in agent_name: 
             state_0 = laneWidthCar
             state_1 = laneWidthBike
             state_2 = laneWidthPed
@@ -115,11 +115,12 @@ class Agent:
         # defaultCarLength = 5
         # defaultPedLength = 0.215
         # defaultBikeLength = 1.6
+        agent_name = self.name
         laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
         cosharing = False
         if 'bicycle' in laneVehicleAllowedType: 
             cosharing = True
-        if self.name == "agent 0":
+        if "agent 0" in agent_name:
             carLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_2')
             if carLaneWidth < 3.2:
                 reward = self.env._fatalPenalty
@@ -133,7 +134,7 @@ class Agent:
                 print("agent 0 reward: " + str(reward))
             
 
-        elif self.name == "agent 1":
+        elif "agent 1" in agent_name:
             bikeLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_1')
             pedLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_0')
 
@@ -159,7 +160,7 @@ class Agent:
                     print("agent 1 reward: " + str(reward))
                     reward = reward
         
-        elif self.name == "agent 2":
+        elif "agent 2" in agent_name:
             # collisionCount = self.edge_agent._collision_count_bike + self.edge_agent._collision_count_ped
             # if collisionCount > 50 and cosharing == True:
             # 	negative_reward_collision = -5
@@ -623,7 +624,7 @@ class EdgeAgent:
         
         return hinderance
     
-class SUMOEnv(Env):
+class SUMOEnv(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array','state_pixels']}
     # small_lane_ids = ['E0_2','E0_1','E0_0']
 
@@ -718,18 +719,20 @@ class SUMOEnv(Env):
             # 	self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation,)))
             # else:
             # 	self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation+1,)))
+        self.action_space = spaces.Tuple(self.action_space)
+        self.observation_space = spaces.Dict(spaces={f'E0 agent {i}': o_space 
+                                                     for i, o_space in enumerate(self.observation_space)})
         self.agents = self.createNAgents(self.edge_agents)
         # self.action_space = spaces.Box(low=np.array([0]), high= np.array([+1])) # Beta value 
         # self.observation_space = spaces.Box(low=0, high=1, shape=(np.shape(self.observation)))
         # self.observation_space.append(spaces.Box(low=-np.inf, high=+np.inf, shape=(6,), dtype=np.float32))
 
-    def setInitialParameters(self,flag):
-        if flag:
-            #testing
+    def set_run_mode(self, mode): 
+        if mode in ['none', 'Test']:
             self._scenario = "Test"
-            # self.withGUI = True
+        elif mode == 'Test Single Flow':
+            self._scenario = "Test Single Flow"
         else:
-            #training
             self._scenario = "Train"
 
     def createNAgents(self, edge_agents):
@@ -814,19 +817,13 @@ class SUMOEnv(Env):
     # def get_lane_queue(self,lane,min_gap):
     #     lanes_queue = self.traci.lane.getLastStepHaltingNumber(lane) / (self.lanes_length/ (min_gap + self.traci.lane.getLastStepLength(lane)))
 
-    def reset(self,mode):		
+    def reset(self, *args):		
         self._sumo_step = 0
         # self._scenario = "Train"
         for edge_agent in self.edge_agents:
             edge_agent.resetAllVariables()
-        if mode in ['none', 'Test']:
-            self._scenario = "Test"
-        elif mode == 'Test Single Flow':
-            self._scenario = "Test Single Flow"
-        else:
-            self._scenario = "Train"
         if self._scenario=="Train":
-            self._slotId = np.random.randint(1,73)
+            self._slotId = np.random.randint(1,120)
             #Adapt Route File for continous change
             # self._slotId = 3 # temporary
             # adaptRouteFile(self._slotId, self.pid)
@@ -861,7 +858,7 @@ class SUMOEnv(Env):
             self._routeFileName = "testcase_1/intersection_Slot_" + str(self._slotId) + ".rou.xml"
             print(self._routeFileName)
         
-        obs_n = []	
+        obs_n = {}
         # self.traci.load(['-n', 'environment/intersection.net.xml', '-r', self._routeFileName, "--start"]) # should we keep the previous vehicle
         if self.firstTimeFlag:
             self.traci.load(self.sumoCMD + ['-n', 'environment/intersection.net.xml', '-r', self._routeFileName])
@@ -885,7 +882,8 @@ class SUMOEnv(Env):
             edge_agent._total_unique_ped_count = len(np.unique(np.array(edge_agent._unique_ped_count_list)))
         for agent in self.agents:   
             agent.done = False
-            obs_n.append(self._get_obs(agent))
+            # obs_n.append(self._get_obs(agent))
+            obs_n[agent.name] = self._get_obs(agent)
         return obs_n
 
     # get observation for a particular agent
@@ -1045,8 +1043,8 @@ class SUMOEnv(Env):
             edge_agent.collectObservation()
 
 
-    def _step(self,action_n):
-        obs_n = []
+    def step(self,action_n):
+        obs_n = {}
         reward_n = []
         done_n = []
         info_n = {'n':[]}
@@ -1204,7 +1202,8 @@ class SUMOEnv(Env):
         # # print("pedestrian count =" + str(self._total_pedestrian_passed))
         
         for agent in self.agents:
-            obs_n.append(self._get_obs(agent))	
+            # obs_n.append(self._get_obs(agent))	
+            obs_n[agent.name] = self._get_obs(agent)
             reward_n.append(self._get_reward(agent))
             done_n.append(self._get_done(agent))
 
@@ -1226,6 +1225,7 @@ class SUMOEnv(Env):
             reward_n = [reward] *self.n
         print("Reward = " + str(reward_n))
         self._lastReward = reward_n[0]
+        
         # print("reward: " + str(self._lastReward))
         # print("Number of cars passed: " + str(self._total_vehicle_passed))
         return obs_n, reward_n, done_n, info_n
@@ -1329,6 +1329,11 @@ class SUMOEnv(Env):
             self._slotId = self.timeOfHour
             self._routeFileName = "testcase_0/two/intersection_Slot_" + str(self._slotId) + ".rou.xml"
         self.timeOfHour +=1
+
+        if self._scenario=='Train':
+            self._slotId = np.random.randint(1,120)
+            self._routeFileName = "environment/intersection_Slot_" + str(self._slotId) + ".rou.xml"
+           
     
     def warmup(self):
         # self._sumo_step = 0
