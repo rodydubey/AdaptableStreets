@@ -32,8 +32,8 @@ use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, o
 wandb.init(
   project=f"Discrete_Rohit{'MADDPG_'.lower()}",
   tags=["MADDPG_4", "RL"],
-  mode=use_wandb,
-#   mode='disabled'
+#   mode=use_wandb,
+  mode='disabled'
 )
 display = 'DISPLAY' in os.environ
 use_gui = False
@@ -151,9 +151,9 @@ def run(config):
             # obs = [i[np.newaxis,:] for i in obs]
             for et_i in range(config.episode_length):
                 step += 1
-                torch_obs = [Variable(torch.Tensor(np.vstack(obs[f'agent {i}'])),
+                torch_obs = [Variable(torch.Tensor(np.vstack(obs[agentname])),
                                     requires_grad=False)
-                            for i in range(maddpg.nagents)]
+                            for agentname in env.get_attr('getAgentNames')[0]]
                 # torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
                 #                     requires_grad=False)
                 #             for i in range(maddpg.nagents)]
@@ -164,8 +164,10 @@ def run(config):
                 # rearrange actions to be per environment
                 actions = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)]
                 # env.envs[0].nextTimeSlot()
-                next_obs, rewards, dones, infos = env.step(actions)
-                replay_buffer.push(obs, agent_actions, rewards, next_obs, dones)
+                simple_actions = simplify_actions(actions)
+                next_obs, rewards, dones, infos = env.step(simple_actions)
+                replay_buffer.push(list(obs.values()), agent_actions, 
+                                   rewards, list(next_obs.values()), dones)
                 obs = next_obs
                 t += config.n_rollout_threads
                 total_reward += float(rewards[0][0])
@@ -232,6 +234,14 @@ def run(config):
         # logger.export_scalars_to_json(str(log_dir / 'summary.json'))
         # logger.close()
 
+def simplify_actions(actions):
+    agent_actions = []
+    for action in actions:
+        if isinstance(action, list):
+            agent_actions.append(simplify_actions(action))
+        else:
+            agent_actions.append(np.argmax(action))
+    return agent_actions
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

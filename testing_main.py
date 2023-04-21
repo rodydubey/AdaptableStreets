@@ -38,9 +38,9 @@ USE_CUDA = False  # torch.cuda.is_available()
 
 # mode = 'gui'
 
-# EDGES = ['E0']
+EDGES = ['E0']
 joint_agents = False
-EDGES = ['E0','-E1','-E2','-E3']
+# EDGES = ['E0','-E1','-E2','-E3']
 # joint_agents = True
 # generateFlowFiles("Test 0") 
 env_kwargs = {'mode': mode,
@@ -78,16 +78,17 @@ def run(config):
     num_seeds = 10
     # run_mode = 'Test Single Flow'
     run_mode = 'Test'
-    modeltype = 'model'
+    surge = True
+    modeltype = 'static'
 
     # [_env.set_run_mode(run_mode) for _env in env.envs]
-    env.set_run_mode(run_mode)
+    env.set_run_mode(run_mode, surge=surge)
 
     # testResultFilePath = f"results/static_test_surge_{config.run_id}.csv"  
     # testResultFilePath = f"results/debug.csv"
-    testResultFilePath = f"results/{modeltype}_parallel_deployment.csv"  
+    # testResultFilePath = f"results/barcelona_{modeltype}_parallel_deployment_{'surge' if surge else 'nosurge'}.csv"  
     # testResultFilePath = f"results/{modeltype}_warmup_factor_5.csv"  
-    # testResultFilePath = f"results/{modeltype}_warmup_nosurge.csv"  
+    testResultFilePath = f"results/{modeltype}_warmup_{'surge' if surge else 'nosurge'}.csv"  
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
         written_headers = False
@@ -100,7 +101,7 @@ def run(config):
             env.set_sumo_seed(seed)
             env.timeOfHour = 1 # hack
             env.modeltype = modeltype # hack
-
+            
             for ep_i in tqdm(range(0, config.n_episodes, config.n_rollout_threads)):
                 total_reward = 0
                 print("Episodes %i-%i of %i" % (ep_i + 1,
@@ -129,7 +130,8 @@ def run(config):
                     # convert actions to numpy arrays
                     agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
                     # rearrange actions to be per environment
-                    actions = [ac[0] for ac in agent_actions]
+                    actions = simplify_actions([ac[0] for ac in agent_actions])
+                    
                     next_obs, rewards, dones, infos = env.step(actions)
                     obs = next_obs
                     t += config.n_rollout_threads
@@ -165,12 +167,21 @@ def run(config):
         # logger.export_scalars_to_json(str(log_dir / 'summary.json'))
         # logger.close()
 
+def simplify_actions(actions):
+    agent_actions = []
+    for action in actions:
+        if isinstance(action, list):
+            agent_actions.append(simplify_actions(action))
+        else:
+            agent_actions.append(np.argmax(action))
+    return agent_actions
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_id", default="simple", type=str)
+    parser.add_argument("--run_id", default="run241", type=str) # run47 is performing the best on training data
     # parser.add_argument("--run_id", default="better_train", type=str) # run47 is performing the best on training data
-    parser.add_argument("--run_id", default="run112", type=str) # run47 is performing the best on training data
+    # parser.add_argument("--run_id", default="run112", type=str) # run47 is performing the best on training data
     parser.add_argument("--model_id", default="/model.pt", type=str)
     parser.add_argument("--model_name", default="simple_model", type=str)
     parser.add_argument("--seed",

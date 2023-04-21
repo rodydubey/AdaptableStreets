@@ -141,7 +141,7 @@ class Agent:
             if cosharing == True:
                 if (bikeLaneWidth + pedLaneWidth) < 2:
                     reward = self.env._fatalPenalty
-                    self.done = True
+                    # self.done = True
                 else:
                     reward = self.edge_agent._total_occupancy_ped_Lane*10/(self.env.action_steps) # as ped lane will count both waiting bikes and peds since the ped lane is coshared and bike lane width = 0
                     # print("bike + ped stopped in cosharing: " + str(reward))
@@ -150,7 +150,7 @@ class Agent:
             else:
                 if bikeLaneWidth < 1 or pedLaneWidth < 1:
                     reward = self.env._fatalPenalty
-                    self.done = True
+                    # self.done = True
                 else:
                     # reward = self.edge_agent._total_count_waiting_ped/(self.env.action_steps*10) + self.edge_agent._total_count_waiting_bike/(self.env.action_steps*10)
                     reward_occupancy_bike = self.edge_agent._total_occupancy_bike_Lane/self.env.action_steps
@@ -335,15 +335,20 @@ class EdgeAgent:
         self._total_count_waiting_car += self.traci.lane.getLastStepHaltingNumber(f'{self.edge_id}_2')
 
         # test stats
-        queue_length, queue_Count = self.env.getQueueLength(f'{self.edge_id}_2')
-        self._queue_Length_car_agent_0 += queue_length
+        # queue_length, queue_Count = self.env.getQueueLength(f'{self.edge_id}_2')
+        # self._queue_Length_car_agent_0 += queue_length
 
-        queue_length, queue_Count = self.env.getQueueLength(f'{self.edge_id}_1')
-        self._queue_Length_bike_agent_1 += queue_length
+        # queue_length, queue_Count = self.env.getQueueLength(f'{self.edge_id}_1')
+        # self._queue_Length_bike_agent_1 += queue_length
 
-        queue_length, queue_Count = self.env.getQueueLength(f'{self.edge_id}_0')
-        self._queue_Length_ped_agent_1 += queue_length
+        # queue_length, queue_Count = self.env.getQueueLength(f'{self.edge_id}_0')
+        # self._queue_Length_ped_agent_1 += queue_length
 
+        [(ped_queue_length, ped_queue_Count), (bike_queue_length, bike_queue_Count),
+         (veh_queue_length, veh_queue_Count)] = self.env.getAllQueueLengths(self.edge_id)
+        self._queue_Length_ped_agent_1 += ped_queue_length
+        self._queue_Length_bike_agent_1 += bike_queue_length
+        self._queue_Length_car_agent_0 += veh_queue_length
 
 
         self._total_waiting_time_bike += self.traci.lane.getWaitingTime(f'{self.edge_id}_1') 
@@ -634,7 +639,7 @@ class SUMOEnv(gym.Env):
                  edges=['E0', '-E1','-E2', '-E3'], simulation_end=36000,
                  joint_agents=False):
         self.pid = os.getpid()
-        self.sumoCMD = []
+        # self.sumoCMD = []
         self.modeltype = 'model'
         self.joint_agents = joint_agents
         self.generatedFiles = []
@@ -727,13 +732,14 @@ class SUMOEnv(gym.Env):
         # self.observation_space = spaces.Box(low=0, high=1, shape=(np.shape(self.observation)))
         # self.observation_space.append(spaces.Box(low=-np.inf, high=+np.inf, shape=(6,), dtype=np.float32))
 
-    def set_run_mode(self, mode): 
+    def set_run_mode(self, mode, surge=False): 
         if mode in ['none', 'Test']:
             self._scenario = "Test"
         elif mode == 'Test Single Flow':
             self._scenario = "Test Single Flow"
         else:
             self._scenario = "Train"
+        self.is_surge = surge
 
     def createNAgents(self, edge_agents):
 
@@ -836,12 +842,16 @@ class SUMOEnv(gym.Env):
         elif self._scenario=="Test":
             self._slotId = self.timeOfHour
             # self._slotId = 35
+            if self.is_surge:
+                folder = 'two'
+            else:
+                folder = 'one'
             if len(self.edges)==1:
-                print("Testing")
-                self._routeFileName = "testcase_0/two/intersection_Slot_" + str(self._slotId) + ".rou.xml"
+                print("Testing RESET WAS CALLED", self.timeOfHour)
+                self._routeFileName = f"barcelona_test/single/{folder}/intersection_Slot_{self._slotId}.rou.xml"
             elif len(self.edges)==4:
                 print("Testing 4wayflow")
-                self._routeFileName = "testcase_0/4way/intersection_Slot_" + str(self._slotId) + ".rou.xml"
+                self._routeFileName = f"barcelona_test/4way/{folder}/intersection_Slot_{self._slotId}.rou.xml"
             print(self._routeFileName)
             self.timeOfHour +=1
         elif self._scenario=="Test Single Flow":
@@ -867,7 +877,8 @@ class SUMOEnv(gym.Env):
                 self.traci.simulationStep() 		# Take a simulation step to initialize
                 self.collectObservation()
                 self._sumo_step +=1
-            #     self.firstTimeFlag = False
+            if self.modeltype != 'static':
+                self.firstTimeFlag = False
         else:
             modified_netfile = f'environment/intersection2_{self.pid}.net.xml'
             self.traci.load(self.sumoCMD + ['-n', modified_netfile, '-r', self._routeFileName])
@@ -895,6 +906,37 @@ class SUMOEnv(gym.Env):
     # def _observation(self,agent):
     # 	return self.getState(agent)
 
+    def getAllQueueLengths(self, edgeID):
+        allVehicles = self.traci.edge.getLastStepVehicleIDs(edgeID)
+        vehicleDict = {"0": [],
+                       "1": [],
+                       "2": []}
+        for veh in allVehicles:
+            x = veh.rsplit('_', 1)
+            vehID = x[1].split(".", 1)[0]
+            vehicleDict[vehID].append(veh)
+
+        laneLength = self.traci.lane.getLength(f'{edgeID}_0')
+        results = []
+        for veh_type, vehicles in vehicleDict.items():
+            queueCount = 0
+            lastQueueLength = 0
+            if len(vehicles) > 1:
+                for veh in vehicles:
+                    speed = self.traci.vehicle.getSpeed(veh)
+                    distFromEnd = laneLength - \
+                        self.traci.vehicle.getLanePosition(veh)
+                    if speed < 0.1:
+                        queueCount += 1
+                        if distFromEnd > lastQueueLength:
+                            lastQueueLength = distFromEnd
+
+                queueLength = lastQueueLength
+            else:
+                queueLength = 0
+
+            results.append((queueLength, queueCount))
+        return results
 
     def getQueueLength(self, laneID):
         allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)
@@ -1064,7 +1106,8 @@ class SUMOEnv(gym.Env):
         if actionFlag == True:
             temp_action_dict = {}
             action_space_dict = {}
-            simple_actions = self.make_action(action_n)
+            # simple_actions = self.make_action(action_n)
+            simple_actions = action_n
             # print(simple_actions, [len(i) for i in action_n])
             # print([(agent.name, agent.edge_id) for agent in self.agents])
             # for i, edge_agent in enumerate(self.edge_agents):
@@ -1199,7 +1242,7 @@ class SUMOEnv(gym.Env):
         # # print("pedestrian count =" + str(self._total_pedestrian_passed))
         
         for agent in self.agents:
-            # obs_n.append(self._get_obs(agent))	
+            # obs_n.append(self._get_obs(agent))
             obs_n[agent.name] = self._get_obs(agent)
             reward_n.append(self._get_reward(agent))
             done_n.append(self._get_done(agent))
@@ -1232,6 +1275,9 @@ class SUMOEnv(gym.Env):
         # return self._currentReward[0],self._currentReward[1]
         return self._currentReward[0],self._currentReward[1],self._currentReward[2]
 
+    @property
+    def getAgentNames(self):
+        return [agent.name for agent in self.agents]
     # set env action for a particular agent
     def _set_action(self, actionDict, modeltype='model', time=None):
         # process action
@@ -1295,31 +1341,41 @@ class SUMOEnv(gym.Env):
             print(tools)
         else:
             sys.exit("please declare environment variable 'SUMO_HOME'")
-        # self.sumoCMD = ["--time-to-teleport", str(-1),"--person-device.rerouting.probability","1","--person-device.rerouting.period","1","--device.rerouting.probability","1","--device.rerouting.period","1","--ignore-route-errors",
-        # 				"--pedestrian.striping.dawdling","0.5","--collision.check-junctions", str(True),"--pedestrian.model","nonInteracting",
-        # 				 "--random","-W","--default.carfollowmodel", "IDM","--no-step-log"]
+
                         # "--device.rerouting.probability","1","--device.rerouting.period","1",
-        self.sumoCMD = ["--time-to-teleport.disconnected",str(1),"--ignore-route-errors",
-                        "--pedestrian.striping.dawdling","0.5","--collision.check-junctions", "--collision.mingap-factor","0","--collision.action", "warn",
-                         "--seed", f"{self.sumo_seed}", "-W","--default.carfollowmodel", "IDM","--no-step-log"]
+        # self.sumoCMD = ["--time-to-teleport.disconnected",str(1),"--ignore-route-errors",
+        #                 "--pedestrian.striping.dawdling","0.5","--collision.check-junctions", "--collision.mingap-factor","0","--collision.action", "warn",
+        #                 '--seed', f"{self.sumo_seed}", "-W","--default.carfollowmodel", "IDM","--no-step-log"]
+
         if withGUI:
             sumoBinary = checkBinary('sumo-gui')
-            self.sumoCMD += ["--start", "--quit-on-end"]
+            # self.sumoCMD += ["--start", "--quit-on-end"]
         else:
             sumoBinary = checkBinary('sumo')
 
-
-        sumoConfig = "gym_sumo/envs/sumo_configs/intersection.sumocfg"
+        # sumoConfig = "gym_sumo/envs/sumo_configs/intersection.sumocfg"
+        # self.sumoCMD = ["-c", sumoConfig] + self.sumoCMD
         sumoStartArgs = ['-n', 'gym_sumo/envs/sumo_configs/intersection.net.xml', 
                            '-r', 'gym_sumo/envs/sumo_configs/intersection.rou.xml']
-        self.sumoCMD = ["-c", sumoConfig] + self.sumoCMD
 
         # Initialize the simulation
         traci.start([sumoBinary] + self.sumoCMD + sumoStartArgs)
         return traci
 
+    @property
+    def sumoCMD(self):
+        sumocmd = ["--time-to-teleport.disconnected",str(1),"--ignore-route-errors",
+                        "--pedestrian.striping.dawdling","0.5","--collision.check-junctions", "--collision.mingap-factor","0","--collision.action", "warn",
+                        "--seed", f"{self.sumo_seed}", "-W","--default.carfollowmodel", "IDM","--no-step-log"]
+        if self.withGUI:
+            sumocmd += ["--start", "--quit-on-end"]
+        sumoConfig = "gym_sumo/envs/sumo_configs/intersection.sumocfg"
+        sumocmd = ["-c", sumoConfig] + sumocmd
+        return sumocmd
+    
     def set_sumo_seed(self, seed):
         self.sumo_seed = seed
+
 
     def nextTimeSlot(self):
         if self._scenario=='Test':
@@ -1345,8 +1401,8 @@ class SUMOEnv(gym.Env):
         for file in self.generatedFiles:
             os.remove(file)
         self.traci.close()
-    
-    
+
+ 
 def wrapPi(angle):
     # makes a number -pi to pi
         while angle <= -180:
