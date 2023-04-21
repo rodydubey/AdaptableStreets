@@ -267,8 +267,6 @@ class EdgeAgent:
         self._total_waiting_time_bike = 0
         self._total_waiting_time_ped = 0
         self._total_count_waiting_car = 0
-        self._total_waiting_time_bike = 0
-        self._total_waiting_time_ped = 0
         self._total_mean_speed_car = 0
         self._total_mean_speed_bike = 0
         self._total_mean_speed_ped = 0
@@ -329,8 +327,6 @@ class EdgeAgent:
         self._unique_car_count_list.extend(self.traci.lane.getLastStepVehicleIDs(f'{self.edge_id}_2'))
         # Count total occupancy of car lane in percentage
         self._total_occupancy_car_Lane += self.traci.lane.getLastStepOccupancy(f'{self.edge_id}_2')/laneWidthCar
-        # Count total waiting time of the cars in the car lane
-        self._total_waiting_time_car += self.traci.lane.getWaitingTime(f'{self.edge_id}_2')
         # Count total number of cars waiting in the car lane
         self._total_count_waiting_car += self.traci.lane.getLastStepHaltingNumber(f'{self.edge_id}_2')
 
@@ -346,13 +342,20 @@ class EdgeAgent:
 
         [(ped_queue_length, ped_queue_Count), (bike_queue_length, bike_queue_Count),
          (veh_queue_length, veh_queue_Count)] = self.env.getAllQueueLengths(self.edge_id)
+        if cosharing:
+            ped_queue_length = max(ped_queue_length, bike_queue_length)
+            bike_queue_length = ped_queue_length
         self._queue_Length_ped_agent_1 += ped_queue_length
         self._queue_Length_bike_agent_1 += bike_queue_length
         self._queue_Length_car_agent_0 += veh_queue_length
 
-
-        self._total_waiting_time_bike += self.traci.lane.getWaitingTime(f'{self.edge_id}_1') 
-        self._total_waiting_time_ped += self.traci.lane.getWaitingTime(f'{self.edge_id}_0') 
+        waiting_time_dict = self.env.get_waiting_times(self.edge_id)
+        self._total_waiting_time_car += waiting_time_dict['passenger']['wait']
+        self._total_waiting_time_bike += waiting_time_dict['bicycle']['wait'] 
+        self._total_waiting_time_ped += waiting_time_dict['pedestrian']['wait'] 
+        # self._total_waiting_time_car += self.traci.lane.getWaitingTime(f'{self.edge_id}_2')
+        # self._total_waiting_time_bike += self.traci.lane.getWaitingTime(f'{self.edge_id}_1') 
+        # self._total_waiting_time_ped += self.traci.lane.getWaitingTime(f'{self.edge_id}_0') 
         # test stats
 
         #Returns the mean speed of vehicles that were on this lane within the last simulation step [m/s]
@@ -768,26 +771,17 @@ class SUMOEnv(gym.Env):
                 agent_actions.append(index)
         return agent_actions
 
-    def _collect_waiting_times_cars(self,laneID):
-        """
-        Retrieve the waiting time of every car in the incoming roads
-        """
-
-        # car_list = self.traci.vehicle.getIDList()
-        nCars= self.traci.lane.getLastStepVehicleIDs(laneID)
-        waiting_times = {}
-        avg_waiting_time = 0
-        if len(nCars) > 0:
-            for car_id in nCars:
-                wait_time = self.traci.vehicle.getAccumulatedWaitingTime(car_id)
-                waiting_times[car_id] = wait_time
-                
-            avg_waiting_time = sum(waiting_times.values())/len(nCars)
-            temp_total_wait_time = self.traci.lane.getWaitingTime(laneID)
-            # print(total_waiting_time)
-            # print(temp_total_wait_time)
-        
-        return avg_waiting_time
+    def get_waiting_times(self, edgeID):
+        counters = {'bicycle': {'count': 0, 'wait': 0},
+                    'passenger': {'count': 0, 'wait': 0},
+                    'pedestrian': {'count': 0, 'wait': 0}}
+        vehicles = self.traci.edge.getLastStepVehicleIDs(edgeID)
+        for vehID in vehicles:
+            veh_class = self.traci.vehicle.getVehicleClass(vehID)
+            wait_time = self.traci.vehicle.getWaitingTime(vehID)
+            counters[veh_class]['count'] += 1
+            counters[veh_class]['wait'] += wait_time
+        return counters
 
     def readRouteFile(self,name):
         tree = ET.parse(self._routeFileName)
