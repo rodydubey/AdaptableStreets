@@ -18,7 +18,7 @@ import warnings
 warnings.filterwarnings('ignore')
 import wandb
 from argparse import ArgumentParser
-from stable_baselines3.common.env_util import make_vec_env, DummyVecEnv, SubprocVecEnv
+from utils.env_wrappers import DummyVecEnv, SubprocVecEnv
 import time
 import os
 from tqdm import tqdm
@@ -29,11 +29,11 @@ from gym_sumo.envs.utils import print_status
 from copy import deepcopy
 
 use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, or disabled
-wandb.init(
+wandb_run = wandb.init(
   project=f"Discrete_Rohit{'MADDPG_'.lower()}",
-  tags=["MADDPG_4", "RL"],
-#   mode=use_wandb,
-  mode='disabled'
+  tags=["MADDPG_final?", "RL"],
+  mode=use_wandb,
+#   mode='disabled'
 )
 display = 'DISPLAY' in os.environ
 use_gui = False
@@ -78,6 +78,7 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_ag
             env = SUMOEnv(mode=mode, edges=EDGES, joint_agents=joint_agents)
             env.seed(seed + rank * 1000)
             np.random.seed(seed + rank * 1000)
+            env.sumo_seed = seed + rank * 1000
             return env
         return init_env
     if n_rollout_threads == 1:
@@ -88,15 +89,15 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_ag
 def run(config):
     model_dir = Path('./models') / config.env_id / config.model_name
     if not model_dir.exists():
-        curr_run = 'run1'
+        curr_run = 'maddpg1'
     else:
-        exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in
+        exst_run_nums = [int(str(folder.name).split('maddpg')[1]) for folder in
                          model_dir.iterdir() if
-                         str(folder.name).startswith('run')]
+                         str(folder.name).startswith('maddpg')]
         if len(exst_run_nums) == 0:
-            curr_run = 'run1'
+            curr_run = 'maddpg1'
         else:
-            curr_run = 'run%i' % (max(exst_run_nums) + 1)
+            curr_run = 'maddpg%i' % (max(exst_run_nums) + 1)
     run_dir = model_dir / curr_run
     log_dir = run_dir / 'logs'
     os.makedirs(log_dir)
@@ -212,7 +213,7 @@ def run(config):
         
             # wandb.log({'# Episodes': ep_i, 
             #     "Average reward": round(np.mean(scores[-10:]), 2)})
-            wandb.log({'# Episodes': ep_i, 
+            wandb_run.log({'# Episodes': ep_i, 
                 "Average reward": smoothed_total_reward,
                 'Actor loss': np.mean(pol_losses),
                 'Critic loss': np.mean(val_losses)
@@ -253,7 +254,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_rollout_threads", default=1, type=int)
     parser.add_argument("--n_training_threads", default=4, type=int)
     parser.add_argument("--buffer_length", default=int(1e6), type=int)
-    parser.add_argument("--n_episodes", default=500, type=int)
+    parser.add_argument("--n_episodes", default=1000, type=int)
     parser.add_argument("--episode_length", default=20, type=int)
     parser.add_argument("--steps_per_update", default=10, type=int)
     parser.add_argument("--batch_size",
