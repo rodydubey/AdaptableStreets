@@ -13,6 +13,8 @@ from stable_baselines3.common.vec_env.base_vec_env import (
     VecEnvObs,
     VecEnvStepReturn,
 )
+from stable_baselines3.common.vec_env.util import copy_obs_dict, dict_to_obs, obs_space_info
+
 
 
 def _worker(
@@ -316,6 +318,7 @@ class DummyVecEnv(VecEnv):
             return super().render(mode=mode)
 
     def _save_obs(self, env_idx: int, obs: VecEnvObs) -> None:
+        # print(obs['E0 agent 10'])
         for key in self.keys:
             if key is None:
                 self.buf_obs[key][env_idx] = obs
