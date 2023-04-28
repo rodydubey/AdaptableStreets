@@ -13,6 +13,8 @@ import xml.etree.ElementTree as ET
 import math
 from itertools import combinations, product
 from utilss import get_space_dims
+from scipy.spatial.distance import cdist
+
 
 class Agent:
     def __init__(self, env, n_agent, edge_agent=None):
@@ -124,14 +126,14 @@ class Agent:
             carLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_2')
             if carLaneWidth < 3.2:
                 reward = self.env._fatalPenalty
-                self.done = True
+                # self.done = True
             else:
                 #occupancy reward. Lower Occupancy higher reward
                 reward_occupancy_car = self.edge_agent._total_density_car_lane/10
                 # reward_car_Stopped_count = self._total_count_waiting_car/(self.action_steps*10)
                 # print("car stopped: " + str(reward_car_Stopped_count))
                 reward = -(reward_occupancy_car)*1.5
-                print("agent 0 reward: " + str(reward))
+            # print("agent 0 reward: " + str(reward))
             
 
         elif "agent 1" in agent_name:
@@ -146,7 +148,6 @@ class Agent:
                     reward = self.edge_agent._total_occupancy_ped_Lane*10/(self.env.action_steps) # as ped lane will count both waiting bikes and peds since the ped lane is coshared and bike lane width = 0
                     # print("bike + ped stopped in cosharing: " + str(reward))
                     reward = -reward*10
-                    print("agent 1 reward: " + str(reward))
             else:
                 if bikeLaneWidth < 1 or pedLaneWidth < 1:
                     reward = self.env._fatalPenalty
@@ -157,8 +158,8 @@ class Agent:
                     reward_occupancy_ped = self.edge_agent._total_occupancy_ped_Lane/self.env.action_steps
                     # print("bike + ped stopped: " + str(reward))
                     reward = -((reward_occupancy_bike+reward_occupancy_ped)/2)*100
-                    print("agent 1 reward: " + str(reward))
                     reward = reward
+            # print("agent 1 reward: " + str(reward))
         
         elif "agent 2" in agent_name:
             # collisionCount = self.edge_agent._collision_count_bike + self.edge_agent._collision_count_ped
@@ -190,43 +191,7 @@ class Agent:
                     reward = -0.75
             self.edge_agent.reward_agent_2 = reward
 
-            # levelOfServiceThreshold_A = 5
-            # levelOfServiceThreshold_B = 10
-            # reward = 0.5
-            # self.reward_agent_2 = reward
-            # if cosharing:
-            # 	if self._levelOfService > levelOfServiceThreshold_A:
-            # 		reward = -reward
-            # 	elif self._levelOfService < levelOfServiceThreshold_A:
-            # 		reward = +reward
-                
-            # else:
-            # 	if (self._levelOfService) > levelOfServiceThreshold_A:
-            # 		reward = +reward
-            # 	elif (self._levelOfService) < levelOfServiceThreshold_A:
-            # 		# reward = self.env._fatalPenalty
-            # 		# agent.done = True
-            # 		reward = -reward
-
-            # if cosharing == True:
-            # 	# positive_reward_cosharing = +0.25
-                
-            # 	# negative_reward_collision = -0.01*collisionCount
-                
-                
-            # 	# print("number of collision " + str(collisionCount))
-            # 	# print("agent 2 reward: " + str(reward))
-            # else:
-            # 	# positive_reward_cosharing = -0.25  #25 collisions and below is
-                
-            # 	# print("agent 2 reward: " + str(reward))
-            # # collisionCount = self._collision_count_bike/self.env.action_steps + self._collision_count_ped/self.action_steps
-            # flowrate = float(self.FlowRateStatsFromRouteFile()[-1])/1200
-            # if flowrate<0.5 and cosharing:
-            # 	reward = 1
-            # else:
-            # 	reward = -1
-            print("Agent 2 Reward :", self.edge_agent.reward_agent_2)
+            # print("Agent 2 Reward :", self.edge_agent.reward_agent_2)
 
         return reward
     
@@ -534,9 +499,6 @@ class EdgeAgent:
         return vehsPerHour,bikesPerHour,pedsPerHour
 
     def getHinderenaceWhenCosharing(self,laneID):
-        h_b_b = 0
-        h_b_p = 0
-        h_p_p = 0
         bikeList = []
         pedList = []
         
@@ -550,40 +512,18 @@ class EdgeAgent:
                 elif vehID[0]=="0":
                     pedList.append(veh)
 
-        pos_bikes = [(self.traci.vehicle.getPosition(bike)) for bike in bikeList]
-        pos_peds = [(self.traci.vehicle.getPosition(ped)) for ped in pedList]
+        pos_bikes = np.array([list(self.traci.vehicle.getPosition(bike)) for bike in bikeList]).reshape((-1,2))
+        pos_peds = np.array([list(self.traci.vehicle.getPosition(ped)) for ped in pedList]).reshape((-1,2))
 
-        for bike, pos_bike in enumerate(pos_bikes):
-            pos_bike_x,pos_bike_y = pos_bike
-            for bb, pos_bb in enumerate(pos_bikes):
-                if bike != bb:
-                    pos_bb_x,pos_bb_y = pos_bb
-
-                    distance = self.traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_bb_x,pos_bb_y)
-                    if distance < 1:
-                        h_b_b +=1
-        for bike, pos_bike in enumerate(pos_bikes):
-            pos_bike_x,pos_bike_y = pos_bike
-            for ped, pos_ped in enumerate(pos_peds):
-                if bike != ped:
-                    pos_ped_x,pos_ped_y = pos_ped
-
-                    distance = self.traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_ped_x,pos_ped_y)
-                    if distance < 1:
-                        h_b_p +=1
-        for ped, pos_ped in enumerate(pos_peds):
-            pos_ped_x,pos_ped_y = pos_ped
-            for pp, pos_pp in enumerate(pos_peds):
-                if ped != pp:
-                    pos_pp_x,pos_pp_y = pos_pp
-
-                    distance = self.traci.simulation.getDistance2D(pos_ped_x,pos_ped_y,pos_pp_x,pos_pp_y)
-                    if distance < 1:
-                        h_p_p +=1
+        pp = cdist(pos_peds,pos_peds)
+        bb = cdist(pos_bikes,pos_bikes)
+        ##  TODO: probably doublecounting
+        h_p_p = np.sum((0<pp) & (pp<1)) # ignore diagonals
+        h_b_b = np.sum((0<bb) & (bb<1))
+        h_b_p = np.sum(cdist(pos_bikes,pos_peds)<1)
         return h_b_b,h_b_p,h_p_p
 
     def getHinderenace(self,laneID,betweenVehicleType):
-        hinderance = 0
         bikeList = []
         pedList = []
         allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)
@@ -595,30 +535,21 @@ class EdgeAgent:
                     bikeList.append(veh)
                 elif vehID[0]=="0":
                     pedList.append(veh)
-        pos_bikes = [(self.traci.vehicle.getPosition(bike)) for bike in bikeList]
-        pos_peds = [(self.traci.vehicle.getPosition(ped)) for ped in pedList]
+        pos_bikes = np.array([list(self.traci.vehicle.getPosition(bike)) for bike in bikeList]).reshape((-1,2))
+        pos_peds = np.array([list(self.traci.vehicle.getPosition(ped)) for ped in pedList]).reshape((-1,2))
 
+        pp = cdist(pos_peds,pos_peds)
+        bb = cdist(pos_bikes,pos_bikes)
+        bp = cdist(pos_bikes,pos_peds)
         if betweenVehicleType == "bike_bike":
-            for bike, posxy in enumerate(pos_bikes):
-                pos_bike_x,pos_bike_y = posxy
-                for bb, posxy_bb in enumerate(pos_bikes):
-                    if bike != bb:
-                        pos_bb_x,pos_bb_y = posxy_bb
-                        distance = self.traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_bb_x,pos_bb_y)
-                        if distance < 1:
-                            hinderance +=1
+            hinderance = np.sum((0<bb) & (bb<1))
 
         elif betweenVehicleType == "bike_ped":
-            for bike, posxy in enumerate(pos_bikes):
-                pos_bike_x,pos_bike_y = posxy
-                for ped, posxy_ped in enumerate(pos_peds):
-                    if bike != ped:
-                        pos_ped_x,pos_ped_y = posxy_ped
-                        distance = self.traci.simulation.getDistance2D(pos_bike_x,pos_bike_y,pos_ped_x,pos_ped_y)
-                        if distance < 1:
-                            hinderance +=1		
+            hinderance = np.sum(bp<1)
+	
 
         elif betweenVehicleType == "ped_ped":
+            hinderance = np.sum((0<pp) & (pp<1)) # ignore diagonals
             for ped, posxy in enumerate(pos_peds):
                 pos_ped_x,pos_ped_y = posxy
                 for pp, posxy_pp in enumerate(pos_peds):
@@ -627,8 +558,6 @@ class EdgeAgent:
                         distance = self.traci.simulation.getDistance2D(pos_ped_x,pos_ped_y,pos_pp_x,pos_pp_y)
                         if distance < 1:
                             hinderance +=1	
-
-            hinderance = 0
         
         return hinderance
     
@@ -832,7 +761,6 @@ class SUMOEnv(gym.Env):
             # else:
             # 	self._slotId = 1
             self._routeFileName = "environment/intersection_Slot_" + str(self._slotId) + ".rou.xml"
-            print(self._routeFileName)
         elif self._scenario=="Test":
             self._slotId = self.timeOfHour
             # self._slotId = 35
@@ -846,7 +774,6 @@ class SUMOEnv(gym.Env):
             elif len(self.edges)==4:
                 print("Testing 4wayflow")
                 self._routeFileName = f"barcelona_test/4way/{folder}/intersection_Slot_{self._slotId}.rou.xml"
-            print(self._routeFileName)
             self.timeOfHour +=1
         elif self._scenario=="Test Single Flow":
             self.timeOfHour = 1
@@ -856,11 +783,10 @@ class SUMOEnv(gym.Env):
             elif len(self.edges)==4:
                 print("Testing 4wayflow")
                 self._routeFileName = "testcase_0/4way/flows.rou.xml"
-            print(self._routeFileName)
         else:
             self._slotId = np.random.randint(1, 288)
             self._routeFileName = "testcase_1/intersection_Slot_" + str(self._slotId) + ".rou.xml"
-            print(self._routeFileName)
+        print("Resetting:", self._routeFileName, self.pid, self.sumo_seed)
         
         obs_n = {}
         # self.traci.load(['-n', 'environment/intersection.net.xml', '-r', self._routeFileName, "--start"]) # should we keep the previous vehicle
@@ -871,8 +797,8 @@ class SUMOEnv(gym.Env):
                 self.traci.simulationStep() 		# Take a simulation step to initialize
                 self.collectObservation()
                 self._sumo_step +=1
-            if self.modeltype != 'static':
-                self.firstTimeFlag = False
+            # if self.modeltype != 'static':
+            #     self.firstTimeFlag = False
         else:
             modified_netfile = f'environment/intersection2_{self.pid}.net.xml'
             self.traci.load(self.sumoCMD + ['-n', modified_netfile, '-r', self._routeFileName])
@@ -1085,7 +1011,6 @@ class SUMOEnv(gym.Env):
         actionFlag = True
         for agent in self.agents:
             agent.done = False
-        
         self._sumo_step = 0
         # adaptRouteFile(self._slotId, self.pid)
         # self.traci.load(self.sumoCMD + ['-n', 'environment/intersection.net.xml', '-r', self._routeFileName])
@@ -1141,10 +1066,9 @@ class SUMOEnv(gym.Env):
                 edge_agent._total_unique_ped_count = len(np.unique(np.array(edge_agent._unique_ped_count_list).flatten()))
 
                 edge_agent._levelOfService = edge_agent.LevelOfService(edge_agent.cosharing)
-                print("Level of Service : " + str(edge_agent.LevelOfService(edge_agent.cosharing)))
-                print("Cosharing :", edge_agent.cosharing)
-                
-                print("Density :", (edge_agent._total_density_ped_lane + edge_agent._total_density_bike_lane))
+                print(f"Level of Service: {edge_agent.LevelOfService(edge_agent.cosharing):.3f}")
+                print(f"Cosharing: {edge_agent.cosharing}")
+                print(f"Density: {(edge_agent._total_density_ped_lane + edge_agent._total_density_bike_lane):.3f}")
             
         # 	if 'bicycle' in laneVehicleAllowedType:
         # 		cosharing = True
@@ -1255,9 +1179,9 @@ class SUMOEnv(gym.Env):
         # reward_n[0] = cooperative_reward
         # reward_n[1] = cooperative_reward
         reward = np.sum(reward_n)
+        print("Reward = " + str(reward_n), done_n)
         if self.shared_reward:
             reward_n = [reward] *self.n
-        print("Reward = " + str(reward_n))
         self._lastReward = reward_n[0]
         
         # print("reward: " + str(self._lastReward))
