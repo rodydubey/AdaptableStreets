@@ -360,7 +360,7 @@ class EdgeAgent:
             # self._collision_count_ped += pedCollisionCount
 
             if self.env._sumo_step % 10 == 0 and ("Test" in self.env._scenario):
-                h_b_b, h_b_p, h_p_p =  self.getHinderenaceWhenCosharing(f'{self.edge_id}_0')
+                h_b_b, h_b_p, h_p_p =  self.getHinderanceWhenCosharing(f'{self.edge_id}_0')
                 self._total_hinderance_bike_bike += h_b_b
                 self._total_hinderance_bike_ped += h_b_p
                 self._total_hinderance_ped_ped += h_p_p
@@ -375,8 +375,8 @@ class EdgeAgent:
             # Count total occupancy of ped lane in percentage
             self._total_occupancy_ped_Lane += self.traci.lane.getLastStepOccupancy(f'{self.edge_id}_0')/laneWidthPed
             if self.env._sumo_step % 10 == 0 and ("Test" in self.env._scenario):
-                self._total_hinderance_bike_bike += self.getHinderenace(f'{self.edge_id}_1',"bike_bike")
-                self._total_hinderance_ped_ped += self.getHinderenace(f'{self.edge_id}_0',"ped_ped")
+                self._total_hinderance_bike_bike += self.getHinderance(f'{self.edge_id}_1',"bike_bike")
+                self._total_hinderance_ped_ped += self.getHinderance(f'{self.edge_id}_0',"ped_ped")
 
             #Agent 2
             # self._collision_count_bike += bikeCollisionCount
@@ -498,11 +498,11 @@ class EdgeAgent:
 
         return vehsPerHour,bikesPerHour,pedsPerHour
 
-    def getHinderenaceWhenCosharing(self,laneID):
+    def getHinderanceWhenCosharing(self,laneID):
         bikeList = []
         pedList = []
         
-        allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)			
+        allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)         
         if len(allVehicles) > 1:
             for veh in allVehicles:
                 x = veh.rsplit("_",1)
@@ -517,13 +517,13 @@ class EdgeAgent:
 
         pp = cdist(pos_peds,pos_peds)
         bb = cdist(pos_bikes,pos_bikes)
-        ##  TODO: probably doublecounting
-        h_p_p = np.sum((0<pp) & (pp<1)) # ignore diagonals
-        h_b_b = np.sum((0<bb) & (bb<1))
+        ##  divide by 2 when doublecounting
+        h_p_p = np.sum((0<pp) & (pp<1))/2 # diagonals are self loops
+        h_b_b = np.sum((0<bb) & (bb<1))/2 # diagonals are self loops
         h_b_p = np.sum(cdist(pos_bikes,pos_peds)<1)
         return h_b_b,h_b_p,h_p_p
 
-    def getHinderenace(self,laneID,betweenVehicleType):
+    def getHinderance(self,laneID,betweenVehicleType):
         bikeList = []
         pedList = []
         allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)
@@ -542,23 +542,14 @@ class EdgeAgent:
         bb = cdist(pos_bikes,pos_bikes)
         bp = cdist(pos_bikes,pos_peds)
         if betweenVehicleType == "bike_bike":
-            hinderance = np.sum((0<bb) & (bb<1))
+            hinderance = np.sum((0<bb) & (bb<1))/2 # diagonals are self loops
 
         elif betweenVehicleType == "bike_ped":
-            hinderance = np.sum(bp<1)
-	
-
+            hinderance = np.sum(bp<1) # no doublecounts
+    
         elif betweenVehicleType == "ped_ped":
-            hinderance = np.sum((0<pp) & (pp<1)) # ignore diagonals
-            for ped, posxy in enumerate(pos_peds):
-                pos_ped_x,pos_ped_y = posxy
-                for pp, posxy_pp in enumerate(pos_peds):
-                    if ped != pp:
-                        pos_pp_x,pos_pp_y = posxy_pp
-                        distance = self.traci.simulation.getDistance2D(pos_ped_x,pos_ped_y,pos_pp_x,pos_pp_y)
-                        if distance < 1:
-                            hinderance +=1	
-        
+            hinderance = np.sum((0<pp) & (pp<1))/2 # diagonals are self loops
+
         return hinderance
     
 class SUMOEnv(gym.Env):
