@@ -173,7 +173,7 @@ class Agent:
             # else:
             # 	negative_reward_collision = -0.01*collisionCount
             # 	reward = negative_reward_collision
-            densityThreshold = 1
+            densityThreshold = 5
             
             if cosharing:
                 if self.edge_agent._total_density_ped_lane > densityThreshold:
@@ -639,7 +639,8 @@ class SUMOEnv(gym.Env):
         else:
             num_agent_factor = 1
         self.n = self._num_lane_agents*num_agent_factor
-        self._num_observation = [len(Agent(self, i, self.edge_agents[0]).getState()) for i in range(self._num_lane_agents)]*num_agent_factor
+        self.agents = self.createNAgents(self.edge_agents)
+        self._num_observation = [len(Agent(self, i, self.edge_agents[j]).getState()) for j in range(num_agent_factor) for i in range(self._num_lane_agents)]
         self._num_actions = [len(carLane_width_actions), len(bikeLane_width_actions),2]*num_agent_factor
         self.action_space = []
         self.observation_space = []
@@ -657,9 +658,8 @@ class SUMOEnv(gym.Env):
             # else:
             # 	self.observation_space.append(spaces.Box(low=0, high=+1, shape=(self._num_observation+1,)))
         self.action_space = spaces.Tuple(self.action_space)
-        self.observation_space = spaces.Dict(spaces={f'E0 agent {i}': o_space 
-                                                     for i, o_space in enumerate(self.observation_space)})
-        self.agents = self.createNAgents(self.edge_agents)
+        self.observation_space = spaces.Dict(spaces={agent.name: o_space 
+                                                     for i, (agent, o_space) in enumerate(zip(self.agents, self.observation_space))})
         # self.action_space = spaces.Box(low=np.array([0]), high= np.array([+1])) # Beta value 
         # self.observation_space = spaces.Box(low=0, high=1, shape=(np.shape(self.observation)))
         # self.observation_space.append(spaces.Box(low=-np.inf, high=+np.inf, shape=(6,), dtype=np.float32))
@@ -760,7 +760,7 @@ class SUMOEnv(gym.Env):
             # 	self._slotId += 1 
             # else:
             # 	self._slotId = 1
-            self._routeFileName = "environment/intersection_Slot_" + str(self._slotId) + ".rou.xml"
+            self._routeFileName = "environment/newTrainFiles/intersection_Slot_" + str(self._slotId) + ".rou.xml"
         elif self._scenario=="Test":
             self._slotId = self.timeOfHour
             # self._slotId = 35
@@ -1224,7 +1224,7 @@ class SUMOEnv(gym.Env):
                 bikeLaneWidth = max(1.5, beta*remainderRoad_0)
                 beta = bikeLaneWidth/remainderRoad_0
 
-                densityThreshold = 1
+                densityThreshold = 5
                 if (agent._total_density_ped_lane + agent._total_density_bike_lane) > 2*densityThreshold:
                     coshare = 0
                 else:

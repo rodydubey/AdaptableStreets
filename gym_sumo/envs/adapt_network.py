@@ -6,6 +6,11 @@ import sys
 import numpy as np
 import subprocess
 
+from_tos = {'E0': 'E2',
+            '-E1': 'E3',
+            '-E2': '-E0',
+            '-E3': 'E1'}
+
 baselineCarLaneWidth = 9.6
 baselinebicycleLaneWidth = 1.5
 baselinePedestrianLaneWidth = 1.5
@@ -56,7 +61,8 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
                 else:
                     coShare = 1  
                 props['coShare'] = coShare
-            edge_props[edge_id] = props    
+            edge_props[edge_id] = props
+            edge_props[from_tos[edge_id]] = props # also set properties of downstream
 
         for edge_id, props in edge_props.items():
             carLaneWidth = props['carLaneWidth']
@@ -69,23 +75,13 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
                 if coShare <= 0.5:            
                     if lanes.attrib['id'] == f"{edge_id}_1":
                         lanes.attrib['width'] = repr(bikeLaneWidth)
-                        # lanes.attrib['width'] = bikeWidthTemp
-
                     elif lanes.attrib['id'] == f"{edge_id}_0":
                         lanes.attrib['width'] = repr(pedLaneWidth)
-                        # lanes.attrib['width'] = bikeWidthTemp
-                else:
-                    if lanes.attrib['id'] == f"{edge_id}_2":
-                        lanes.attrib['width'] = repr(carLaneWidth)
-                        # lanes.attrib['width'] = carLaneWidth
-                
-                    elif lanes.attrib['id'] == f"{edge_id}_0":
+                else:             
+                    if lanes.attrib['id'] == f"{edge_id}_0":
                         lanes.attrib['width'] = repr(bikeLaneWidth+pedLaneWidth)
-                        # lanes.attrib['width'] = bikeWidthTemp
-
                     elif lanes.attrib['id'] == f"{edge_id}_1":
                         lanes.attrib['width'] = repr(0)
-                        # lanes.attrib['width'] = bikeWidthTemp
         
         #  write xml 
         modified_netfile = f'environment/intersection2_{pid}.net.xml'
@@ -129,26 +125,14 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
             coShare = props['coShare']
             #change lane sharing based on agent choice
             if coShare <= 0.5:
-                disallowed = ['private', 'emergency', 'passenger','authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-                disallowed.append('pedestrian')
-                traci.lane.setDisallowed(f'{edge_id}_1',disallowed)
-                traci.lane.setAllowed(f'{edge_id}_1','bicycle')
-                disallowed2 = ['private', 'emergency', 'passenger', 'authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-                disallowed2.append('bicycle')
-                traci.lane.setDisallowed(f'{edge_id}_0',disallowed2)
-                traci.lane.setAllowed(f'{edge_id}_0','pedestrian')
+                traci.lane.setDisallowed(f'{edge_id}_1', ['all'])
+                traci.lane.setAllowed(f'{edge_id}_1', ['bicycle'])
+                traci.lane.setDisallowed(f'{edge_id}_0', ['all'])
+                traci.lane.setAllowed(f'{edge_id}_0', ['pedestrian'])
             else: 
-                disallowed3 = ['private', 'emergency', 'authority', 'passenger','army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-                disallowed3.append('bicycle')
-                disallowed3.append('pedestrian')
-                traci.lane.setDisallowed(f'{edge_id}_0',disallowed3)
+                traci.lane.setDisallowed(f'{edge_id}_0', ['all'])
                 allowed = []
                 allowed.append('bicycle')
                 allowed.append('pedestrian')        
-                traci.lane.setAllowed(f'{edge_id}_0',allowed)
-                # peds= traci.lane.getLastStepVehicleIDs(f"{edge_id}_0")
-                # allVehicles = traci.vehicle.getIDList()
+                traci.lane.setAllowed(f'{edge_id}_0', allowed)
                 traci.lane.setDisallowed(f'{edge_id}_1', ["all"])
-                # traci.lane.setAllowed(f'{agent_edge}_0','bicycle')
-                #loop through all pedestrian on E0_0 lane and change lane to E0_1
-                # car_list = traci.vehicle.getIDList()
