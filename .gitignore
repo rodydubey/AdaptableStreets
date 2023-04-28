@@ -1,9 +1,14 @@
 # gym_sumo files
+results/*
 stat_train*.csv
 intersection2*.xml
 model/
+models/
 wandb/
+environment/newTrainFiles
 slurm*.out
+*.rou.xml
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
