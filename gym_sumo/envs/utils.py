@@ -6,7 +6,7 @@ from collections import deque
 import matplotlib.pyplot as plt
 
 np.random.seed(42)
-tree = etree.parse('environment/intersection_Slot_3_backup.rou.xml')
+tree = etree.parse('environment/base_flow.rou.xml')
 root = tree.getroot()
 
 
@@ -244,7 +244,7 @@ def generateFlowFiles(scenario, edges=['E0', '-E1','-E2', '-E3']):
             tree.write(file_handle)
             file_handle.close()
     else:
-        for i in range(72): 
+        for i in range(122): 
             randomIndex = np.random.randint(1,37)          
             # combination = trafficFlowDataAll.get(str(i+1))
             combination = trafficFlowDataAll.get(str(randomIndex))
@@ -255,8 +255,8 @@ def generateFlowFiles(scenario, edges=['E0', '-E1','-E2', '-E3']):
 
            # below noise range are coming from the Surge Traffic flow values. 
             carNoise = np.random.randint(+40,+250)
-            bikeNoise = np.random.randint(-21,+50)
-            pedNoise = np.random.randint(-14,+30)
+            bikeNoise = np.random.randint(-21,+150)
+            pedNoise = np.random.randint(-14,+500)
 
             pedFlowCount =  pedflowLevelDict.get(str(pedFlow)) + pedNoise
             bikeFlowCount =  bikeflowLevelDict.get(str(bikeFlow)) + bikeNoise
@@ -277,93 +277,7 @@ def generateFlowFiles(scenario, edges=['E0', '-E1','-E2', '-E3']):
                     if flows.attrib['id'] == f"{edge_id}_f_2":
                         flows.attrib['vehsPerHour'] = str(carFlowCount)
 
-                # if flows.attrib['id'] == "f_0":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-                # if flows.attrib['id'] == "f_3":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-                # if flows.attrib['id'] == "f_6":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-                
-                # if flows.attrib['id'] == "f_9":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-                # if flows.attrib['id'] == "f_12":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-                # if flows.attrib['id'] == "f_15":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-
-                # if flows.attrib['id'] == "f_18":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-                # if flows.attrib['id'] == "f_21":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-                # if flows.attrib['id'] == "f_24":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-
-                # if flows.attrib['id'] == "f_27":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-                # if flows.attrib['id'] == "f_30":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-                # if flows.attrib['id'] == "f_33":
-                #     flows.attrib['vehsPerHour'] = repr(pedFlowCount)
-
-
-                # if flows.attrib['id'] == "f_1":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-                # if flows.attrib['id'] == "f_4":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-                # if flows.attrib['id'] == "f_7":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-                
-                # if flows.attrib['id'] == "f_10":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-                # if flows.attrib['id'] == "f_13":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-                # if flows.attrib['id'] == "f_16":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-
-                # if flows.attrib['id'] == "f_19":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-                # if flows.attrib['id'] == "f_22":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-                # if flows.attrib['id'] == "f_25":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-
-                # if flows.attrib['id'] == "f_28":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-                # if flows.attrib['id'] == "f_31":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-                # if flows.attrib['id'] == "f_34":
-                #     flows.attrib['vehsPerHour'] = repr(bikeFlowCount)
-
-                
-                # if flows.attrib['id'] == "f_2":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-                # if flows.attrib['id'] == "f_5":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-                # if flows.attrib['id'] == "f_8":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-                
-                # if flows.attrib['id'] == "f_11":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-                # if flows.attrib['id'] == "f_14":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-                # if flows.attrib['id'] == "f_17":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-
-                # if flows.attrib['id'] == "f_20":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-                # if flows.attrib['id'] == "f_23":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-                # if flows.attrib['id'] == "f_26":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-
-                # if flows.attrib['id'] == "f_29":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-                # if flows.attrib['id'] == "f_32":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-                # if flows.attrib['id'] == "f_35":
-                #     flows.attrib['vehsPerHour'] = repr(carFlowCount)
-
-            filename = "environment/intersection_Slot_" + str(i+1) + ".rou.xml"
+            filename = "environment/newTrainFiles/intersection_Slot_" + str(i+1) + ".rou.xml"
             file_handle = open(filename,"wb")
             tree.write(file_handle)
             file_handle.close()
