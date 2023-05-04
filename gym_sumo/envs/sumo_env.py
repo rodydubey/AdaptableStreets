@@ -15,6 +15,7 @@ from itertools import combinations, product
 from utilss import get_space_dims
 from scipy.spatial.distance import cdist
 
+DENSITY_THRESHOLD = 5.45
 
 class Agent:
     def __init__(self, env, n_agent, edge_agent=None):
@@ -173,21 +174,20 @@ class Agent:
             # else:
             # 	negative_reward_collision = -0.01*collisionCount
             # 	reward = negative_reward_collision
-            densityThreshold = 5
             
             if cosharing:
-                if self.edge_agent._total_density_ped_lane > densityThreshold:
-                    # reward = -(self.edge_agent._total_density_ped_lane - densityThreshold)/self.edge_agent._total_density_ped_lane
+                if self.edge_agent._total_density_ped_lane > DENSITY_THRESHOLD:
+                    # reward = -(self.edge_agent._total_density_ped_lane - DENSITY_THRESHOLD)/self.edge_agent._total_density_ped_lane
                     reward = -0.75
-                elif self.edge_agent._total_density_ped_lane < densityThreshold:
-                    # reward = (densityThreshold - self.edge_agent._total_density_ped_lane)/densityThreshold
+                elif self.edge_agent._total_density_ped_lane < DENSITY_THRESHOLD:
+                    # reward = (DENSITY_THRESHOLD - self.edge_agent._total_density_ped_lane)/DENSITY_THRESHOLD
                     reward = 0.75
             else:
-                if (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) > 2*densityThreshold:
-                    # reward = (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane - 2*densityThreshold)/(self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane)
+                if (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) > 2*DENSITY_THRESHOLD:
+                    # reward = (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane - 2*DENSITY_THRESHOLD)/(self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane)
                     reward = 0.75
-                elif (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) < 2*densityThreshold:
-                    # reward = -(2*densityThreshold - self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane)/(2*densityThreshold)
+                elif (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) < 2*DENSITY_THRESHOLD:
+                    # reward = -(2*DENSITY_THRESHOLD - self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane)/(2*DENSITY_THRESHOLD)
                     reward = -0.75
             self.edge_agent.reward_agent_2 = reward
 
@@ -213,12 +213,12 @@ class EdgeAgent:
         self._avg_ped_distance_agent_1 = 0
         self._avg_bike_distance_agent_1 = 0
         self._density = 0
-        self._queue_Length_car_agent_0 = 0
-        self._queue_Length_ped_agent_1 = 0
-        self._queue_Length_bike_agent_1 = 0
-        self._queue_Count_car_agent_0 = 0
-        self._queue_Count_ped_agent_1 = 0
-        self._queue_Count_bike_agent_1 = 0
+        self._queue_Length_car = 0
+        self._queue_Length_ped = 0
+        self._queue_Length_bike = 0
+        self._queue_Count_car = 0
+        self._queue_Count_ped = 0
+        self._queue_Count_bike = 0
         self._total_vehicle_passed_agent_2 = 0 
         # self._averageRewardStepCounter = 0
         self._unique_car_count_list = []
@@ -310,9 +310,13 @@ class EdgeAgent:
         if cosharing:
             ped_queue_length = max(ped_queue_length, bike_queue_length)
             bike_queue_length = ped_queue_length
-        self._queue_Length_ped_agent_1 += ped_queue_length
-        self._queue_Length_bike_agent_1 += bike_queue_length
-        self._queue_Length_car_agent_0 += veh_queue_length
+        self._queue_Length_ped += ped_queue_length
+        self._queue_Length_bike += bike_queue_length
+        self._queue_Length_car += veh_queue_length
+        self._queue_Count_ped += ped_queue_Count
+        self._queue_Count_bike += bike_queue_Count
+        self._queue_Count_car += veh_queue_Count
+
 
         waiting_time_dict = self.env.get_waiting_times(self.edge_id)
         self._total_waiting_time_car += waiting_time_dict['passenger']['wait']
@@ -390,6 +394,9 @@ class EdgeAgent:
         _total_hinderance_ped_ped = self._total_hinderance_ped_ped/30
         _total_hinderance_bike_bike = self._total_hinderance_bike_bike/30
         _total_hinderance_bike_ped = self._total_hinderance_bike_ped/30
+        _occupany_ped_lane = self._total_occupancy_ped_Lane/300
+        _occupancy_bike_lane = self._total_occupancy_bike_Lane/300
+
         _avg_waiting_time_car = self._total_waiting_time_car/(100*300)
 
         if coSharing:
@@ -398,8 +405,10 @@ class EdgeAgent:
             self.w_hinderance_p_p = 0.1
             laneID = f'{self.edge_id}_0'
             laneWidth = self.traci.lane.getWidth(laneID)/12.6
-            los = -self.w_lane_width*laneWidth + self.w_total_occupancy*self._total_occupancy_ped_Lane  + self.w_hinderance_b_b*_total_hinderance_bike_bike + \
-                 self.w_hinderance_b_p*_total_hinderance_bike_ped + self.w_hinderance_p_p*_total_hinderance_ped_ped
+            # los = -self.w_lane_width*laneWidth + self.w_total_occupancy*_occupany_ped_lane  + self.w_hinderance_b_b*_total_hinderance_bike_bike + \
+            #      self.w_hinderance_b_p*_total_hinderance_bike_ped + self.w_hinderance_p_p*_total_hinderance_ped_ped
+            los = -laneWidth + _occupany_ped_lane  + _total_hinderance_bike_bike + \
+                  _total_hinderance_bike_ped + _total_hinderance_ped_ped
 
         else:
             self.w_hinderance_b_b = 0.2
@@ -409,14 +418,13 @@ class EdgeAgent:
             bikeLaneID = f'{self.edge_id}_1'
             pedLaneWidth = self.traci.lane.getWidth(pedLaneID)/12.6
             bikeLaneWidth = self.traci.lane.getWidth(bikeLaneID)/12.6
-            los_ped_Lane = -self.w_lane_width*pedLaneWidth + self.w_total_occupancy*self._total_occupancy_ped_Lane  + self.w_hinderance_p_p*_total_hinderance_ped_ped
-            los_bike_Lane = -self.w_lane_width*bikeLaneWidth + self.w_total_occupancy*self._total_occupancy_bike_Lane  + self.w_hinderance_b_b*_total_hinderance_bike_bike
+            # los_ped_Lane = -self.w_lane_width*pedLaneWidth + self.w_total_occupancy*_occupany_ped_lane  + self.w_hinderance_p_p*_total_hinderance_ped_ped
+            # los_bike_Lane = -self.w_lane_width*bikeLaneWidth + self.w_total_occupancy*_occupancy_bike_lane  + self.w_hinderance_b_b*_total_hinderance_bike_bike
+            los_ped_Lane = -pedLaneWidth + _occupany_ped_lane  + _total_hinderance_ped_ped
+            los_bike_Lane = -bikeLaneWidth + _occupancy_bike_lane  + _total_hinderance_bike_bike
             los = (los_ped_Lane + los_bike_Lane)/2
 
-        total_los = _avg_waiting_time_car + los
-
-        if total_los <0:
-            total_los = 0
+        total_los = los
         return total_los
 
     def getTestStats(self):
@@ -425,13 +433,16 @@ class EdgeAgent:
         #returns LOS per step
 
         avg_waiting_time_car = self._total_waiting_time_car/self.env.action_steps
-        avg_queue_length_car = self._queue_Length_car_agent_0/self.env.action_steps
+        avg_queue_length_car = self._queue_Length_car/self.env.action_steps
+        avg_queue_count_car = self._queue_Count_car/self.env.action_steps
 
         avg_waiting_time_bike = self._total_waiting_time_bike/self.env.action_steps
-        avg_queue_length_bike = self._queue_Length_bike_agent_1/self.env.action_steps
+        avg_queue_length_bike = self._queue_Length_bike/self.env.action_steps
+        avg_queue_count_bike = self._queue_Count_bike/self.env.action_steps
 
         avg_waiting_time_ped = self._total_waiting_time_ped/self.env.action_steps
-        avg_queue_length_ped = self._queue_Length_ped_agent_1/self.env.action_steps
+        avg_queue_length_ped = self._queue_Length_ped/self.env.action_steps
+        avg_queue_count_ped = self._queue_Count_ped/self.env.action_steps
         los = self._levelOfService
         laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
         if 'bicycle' in laneVehicleAllowedType:
@@ -440,10 +451,10 @@ class EdgeAgent:
             cosharing = False
 
         headers = ['avg_waiting_time_car', 'avg_waiting_time_bike', 'avg_waiting_time_ped',
-                   'avg_queue_length_car', 'avg_queue_length_bike', 'avg_queue_length_ped',
+                   'avg_queue_count_car', 'avg_queue_count_bike', 'avg_queue_count_ped',
                    'los', "Reward_Agent_2", "cosharing", 'edge_id']
         values = [avg_waiting_time_car, avg_waiting_time_bike, avg_waiting_time_ped,
-                  avg_queue_length_car, avg_queue_length_bike, avg_queue_length_ped,
+                  avg_queue_count_car, avg_queue_count_bike, avg_queue_count_ped,
                   los, self.reward_agent_2, cosharing, self.edge_id]
         return headers, values
 
@@ -1215,8 +1226,7 @@ class SUMOEnv(gym.Env):
                 bikeLaneWidth = max(1.5, beta*remainderRoad_0)
                 beta = bikeLaneWidth/remainderRoad_0
 
-                densityThreshold = 5
-                if (agent._total_density_ped_lane + agent._total_density_bike_lane) > 2*densityThreshold:
+                if (agent._total_density_ped_lane + agent._total_density_bike_lane) > 2*DENSITY_THRESHOLD:
                     coshare = 0
                 else:
                     coshare = 1
