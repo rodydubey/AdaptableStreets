@@ -52,7 +52,6 @@ env = SUMOEnvPPO(**env_kwargs)
 
 # env = make_vec_env(SUMOEnvPPO, n_envs=1, env_kwargs=env_kwargs)
 # check_env(env, warn=True)
-env.set_run_mode('Test', surge=True)
 # env.env_method('set_run_mode', 'Test')
 
 print(env.action_space)
@@ -65,15 +64,20 @@ model = PPO("MlpPolicy", env, n_steps=6, verbose=1)
 def run(config):
     model_dir = Path('./models') / config.env_id / config.model_name
     # run_id = 'run225'
-    run_id = 'PPOrun255'
+    run_id = 'ppo_4.87'
     run_dir = model_dir / run_id
     model.load(run_dir / 'model.pt')
     t = 0
     scores = []
     smoothed_total_reward = 0
     start_seed = 42
-    num_seeds = 50
-    testResultFilePath = f"results/PPO_test_surge_{run_id}.csv"
+    num_seeds = 1
+    run_mode = 'Test'
+    surge = True
+    env.set_run_mode('Test', surge=surge)
+
+    # testResultFilePath = f"results/PPO_test_{'surge' if surge else 'nosurge'}_{run_id}.csv"
+    testResultFilePath = f"results/debug_ppo.csv"
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
         # writer.writerow(['Car_Flow_Rate','Bike_Flow_Rate','Ped_Flow_Rate','Car_Lane_Width','Bike_Lane_Width','Ped_Lane_Width','Co_Sharing', \

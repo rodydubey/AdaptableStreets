@@ -13,15 +13,12 @@ from algorithms.maddpg import MADDPG
 
 import numpy as np
 import sys
-sys.path.append('C:/D/SUMO/MARL/multiagentRL/')
 from gym_sumo.envs import SUMOEnv
 from matplotlib import pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
 import wandb
 from argparse import ArgumentParser
-# from utils.env_wrappers import SubprocVecEnv, DummyVecEnv
-# from stable_baselines3.common.env_util import make_vec_env
 import time
 import os
 from tqdm import tqdm
@@ -29,6 +26,7 @@ import csv
 from gym_sumo.envs.utils import generateFlowFiles
 from gym_sumo.envs.utils import plot_scores
 from gym_sumo.envs.utils import print_status
+from gym_sumo.envs.sumo_env import DENSITY_THRESHOLD
 
 display = 'DISPLAY' in os.environ
 use_gui = False
@@ -48,7 +46,7 @@ env_kwargs = {'mode': mode,
               'joint_agents': joint_agents}
 def run(config):
     model_dir = Path('./models') / config.env_id / config.model_name
-    curr_run = config.run_id + config.model_id
+    curr_run = f'{config.run_id}_{DENSITY_THRESHOLD:.2f}' + config.model_id
     run_dir = model_dir / curr_run
     log_dir = run_dir / 'logs'
 
@@ -75,20 +73,21 @@ def run(config):
     smoothed_total_reward = 0
     pid = os.getpid()
     start_seed = 42
-    num_seeds = 10
+    num_seeds = 1
     # run_mode = 'Test Single Flow'
     run_mode = 'Test'
     surge = True
-    modeltype = 'static'
+    modeltype = 'model'
 
     # [_env.set_run_mode(run_mode) for _env in env.envs]
     env.set_run_mode(run_mode, surge=surge)
 
     # testResultFilePath = f"results/static_test_surge_{config.run_id}.csv"  
-    # testResultFilePath = f"results/debug.csv"
-    # testResultFilePath = f"results/barcelona_{modeltype}_parallel_deployment_{'surge' if surge else 'nosurge'}.csv"  
+    # testResultFilePath = f"results/debug_static.csv"
+    # testResultFilePath = f"results/debug_heuristic.csv"
+    # testResultFilePath = f"results/{modeltype}_4way_{'joint_' if joint_agents else ''}{'surge' if surge else 'nosurge'}.csv"  
     # testResultFilePath = f"results/{modeltype}_warmup_factor_5.csv"  
-    testResultFilePath = f"results/{modeltype}_warmup_{'surge' if surge else 'nosurge'}.csv"  
+    testResultFilePath = f"results/{modeltype}_damian_{'surge' if surge else 'nosurge'}_d{DENSITY_THRESHOLD}.csv"  
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
         written_headers = False
@@ -125,19 +124,22 @@ def run(config):
                                 for agent in env.agents]# in range(maddpg.nagents*len(env.edges))]
                     # get actions as torch Variables
                     torch_agent_actions = []
-                    for i, maddpg in enumerate(edge_agents):
-                        torch_agent_actions += maddpg.step(torch_obs[i*3:i*3+3], explore=False)
+                    if joint_agents:
+                        torch_agent_actions += maddpg.step(torch_obs, explore=False)
+                    else:
+                        for i, maddpg in enumerate(edge_agents):
+                            torch_agent_actions += maddpg.step(torch_obs[i*3:i*3+3], explore=False)
                     # convert actions to numpy arrays
                     agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
                     # rearrange actions to be per environment
                     actions = simplify_actions([ac[0] for ac in agent_actions])
-                    
+                    print('simple action', actions)
                     next_obs, rewards, dones, infos = env.step(actions)
                     obs = next_obs
                     t += config.n_rollout_threads
                     total_reward += rewards[0]
 
-                    rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
+                    # rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
 
                     for edge_agent in env.edge_agents:
                         headers, values = edge_agent.getTestStats()
@@ -179,8 +181,10 @@ def simplify_actions(actions):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--env_id", default="simple", type=str)
-    parser.add_argument("--run_id", default="run241", type=str) # run47 is performing the best on training data
-    # parser.add_argument("--run_id", default="better_train", type=str) # run47 is performing the best on training data
+    # parser.add_argument("--run_id", default="run241", type=str) # run47 is performing the best on training data
+    parser.add_argument("--run_id", default="maddpg", type=str) # run47 is performing the best on training data
+    # parser.add_argument("--run_id", default="maddpg_4.87_joint", type=str) # run47 is performing the best on training data
+    # parser.add_argument("--run_id", default="/Users/damian/Downloads", type=str) # run47 is performing the best on training data
     # parser.add_argument("--run_id", default="run112", type=str) # run47 is performing the best on training data
     parser.add_argument("--model_id", default="/model.pt", type=str)
     parser.add_argument("--model_name", default="simple_model", type=str)

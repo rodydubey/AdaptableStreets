@@ -14,6 +14,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.logger import configure
 import gym
+import gym_sumo
 import numpy as np
 # from stable_baselines3.common.results_plotter import load_results, ts2xy
 # from stable_baselines3.common.utils import set_random_seed
@@ -119,16 +120,17 @@ model = PPO("MlpPolicy", env, n_steps=20, verbose=1,tensorboard_log='logs/')
 model.set_logger(new_logger)
 def run(config):
   model_dir = Path('./models') / config.env_id / config.model_name
-  if not model_dir.exists():
-      curr_run = 'run1'
-  else:
-    exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in
-                      model_dir.iterdir() if
-                      str(folder.name).startswith('run')]
-    if len(exst_run_nums) == 0:
-        curr_run = 'run1'
-    else:
-        curr_run = 'run%i' % (max(exst_run_nums) + 1)
+  curr_run = f'ppo_{gym_sumo.envs.sumo_env.DENSITY_THRESHOLD:.2f}'
+#   if not model_dir.exists():
+#       curr_run = 'run1'
+#   else:
+#     exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in
+#                       model_dir.iterdir() if
+#                       str(folder.name).startswith('run')]
+#     if len(exst_run_nums) == 0:
+#         curr_run = 'run1'
+#     else:
+#         curr_run = 'run%i' % (max(exst_run_nums) + 1)
   run_dir = model_dir / curr_run
   # for ep_i in tqdm(range(0, config.n_episodes)):
   #   total_reward = 0
@@ -137,7 +139,7 @@ def run(config):
   #                                           config.n_episodes))
   #   # obs = env.reset()
     # Train the agent
-  model.learn(24000, reset_num_timesteps=True,tb_log_name="PPO",progress_bar=True,)
+  model.learn(30000, reset_num_timesteps=True,tb_log_name="PPO",progress_bar=True,)
     # step = 0
     # for et_i in range(config.episode_length):
     #   step += 1

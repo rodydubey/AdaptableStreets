@@ -11,7 +11,7 @@ from algorithms.maddpg import MADDPG
 
 import numpy as np
 import sys
-sys.path.append('C:/D/SUMO/MARL/multiagentRL/')
+import gym_sumo
 from gym_sumo.envs import SUMOEnv
 from matplotlib import pyplot as plt
 import warnings
@@ -28,15 +28,9 @@ from gym_sumo.envs.utils import plot_scores
 from gym_sumo.envs.utils import print_status
 from copy import deepcopy
 
-use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, or disabled
-wandb_run = wandb.init(
-  project=f"Discrete_Rohit{'MADDPG_'.lower()}",
-  tags=["MADDPG_final?", "RL"],
-  mode=use_wandb,
-#   mode='disabled'
-)
 display = 'DISPLAY' in os.environ
 use_gui = False
+save = True
 mode = 'gui' if (use_gui and display) else 'none'
 
 # mode = 'gui'
@@ -86,21 +80,24 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_ag
     else:
         return SubprocVecEnv([get_env_fn(i) for i in range(n_rollout_threads)])
 
-def run(config):
+def run(config, wandb_run):
     model_dir = Path('./models') / config.env_id / config.model_name
-    if not model_dir.exists():
-        curr_run = 'maddpg1'
-    else:
-        exst_run_nums = [int(str(folder.name).split('maddpg')[1]) for folder in
-                         model_dir.iterdir() if
-                         str(folder.name).startswith('maddpg')]
-        if len(exst_run_nums) == 0:
-            curr_run = 'maddpg1'
-        else:
-            curr_run = 'maddpg%i' % (max(exst_run_nums) + 1)
+    curr_run = f'maddpg_{gym_sumo.envs.sumo_env.DENSITY_THRESHOLD:.2f}'
+    if joint_agents:
+        curr_run += '_joint'
+    # if not model_dir.exists():
+    #     curr_run = 'maddpg1'
+    # else:
+    #     exst_run_nums = [int(str(folder.name).split('maddpg')[1]) for folder in
+    #                      model_dir.iterdir() if
+    #                      str(folder.name).startswith('maddpg')]
+    #     if len(exst_run_nums) == 0:
+    #         curr_run = 'maddpg1'
+    #     else:
+    #         curr_run = 'maddpg%i' % (max(exst_run_nums) + 1)
     run_dir = model_dir / curr_run
     log_dir = run_dir / 'logs'
-    os.makedirs(log_dir)
+    os.makedirs(log_dir, exist_ok=True)
     # logger = SummaryWriter(str(log_dir))
 
     torch.manual_seed(config.seed)
@@ -155,9 +152,6 @@ def run(config):
                 torch_obs = [Variable(torch.Tensor(np.vstack(obs[agentname])),
                                     requires_grad=False)
                             for agentname in env.get_attr('getAgentNames')[0]]
-                # torch_obs = [Variable(torch.Tensor(np.vstack(obs[:, i])),
-                #                     requires_grad=False)
-                #             for i in range(maddpg.nagents)]
                 # get actions as torch Variables
                 torch_agent_actions = maddpg.step(torch_obs, explore=True)
                 # convert actions to numpy arrays
@@ -166,6 +160,7 @@ def run(config):
                 actions = [[ac[i] for ac in agent_actions] for i in range(config.n_rollout_threads)]
                 # env.envs[0].nextTimeSlot()
                 simple_actions = simplify_actions(actions)
+                # print(env.get_attr('edge_agents'))
                 next_obs, rewards, dones, infos = env.step(simple_actions)
                 replay_buffer.push(list(obs.values()), agent_actions, 
                                    rewards, list(next_obs.values()), dones)
@@ -174,8 +169,10 @@ def run(config):
                 total_reward += float(rewards[0][0])
 
                 # rewardAgent_0, rewardAgent_1, rewardAgent_2 = env.env_method('rewardAnalysisStats')
-                
-                # for edge_agent in env.envs[0].edge_agents:
+                # print(env.env_method('rewardAnalysisStats'))
+
+                # for edge_agent in env.get_attr('edge_agents'):
+                #     print(edge_agent)
                 #     headers, values = edge_agent.testAnalysisStats()
                 #     if not written_headers:
                 #         writer.writerow(headers + ['RewardAgent_0', 'RewardAgent_1', 'RewardAgent_2'])
@@ -219,12 +216,12 @@ def run(config):
                 'Critic loss': np.mean(val_losses)
                 })
 
-            if ep_i % config.save_interval < config.n_rollout_threads:
+            if (ep_i % config.save_interval) < config.n_rollout_threads and save:
                 os.makedirs(run_dir / 'incremental', exist_ok=True)
                 maddpg.save(run_dir / 'incremental' / ('model_ep%i.pt' % (ep_i + 1)))
                 maddpg.save(run_dir / 'model.pt')
-
-        maddpg.save(run_dir / 'model.pt')
+        if save:
+            maddpg.save(run_dir / 'model.pt')
         env.close()
 
     plt.plot(scores)
@@ -254,7 +251,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_rollout_threads", default=1, type=int)
     parser.add_argument("--n_training_threads", default=4, type=int)
     parser.add_argument("--buffer_length", default=int(1e6), type=int)
-    parser.add_argument("--n_episodes", default=1000, type=int)
+    parser.add_argument("--n_episodes", default=1500, type=int)
     parser.add_argument("--episode_length", default=20, type=int)
     parser.add_argument("--steps_per_update", default=10, type=int)
     parser.add_argument("--batch_size",
@@ -278,4 +275,12 @@ if __name__ == '__main__':
 
     config = parser.parse_args()
 
-    run(config)
+    use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, or disabled
+    if not save:
+        use_wandb = 'disabled'
+    wandb_run = wandb.init(
+        project=f"Discrete_Rohit{'MADDPG_'.lower()}",
+        tags=["MADDPG_final?", "RL"],
+        mode=use_wandb,
+    )
+    run(config, wandb_run)

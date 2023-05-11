@@ -15,7 +15,9 @@ from itertools import combinations, product
 from utilss import get_space_dims
 from scipy.spatial.distance import cdist
 
-DENSITY_THRESHOLD = 5.45
+DENSITY_THRESHOLD = 4.87
+# DENSITY_THRESHOLD = 9.27#0967
+# DENSITY_THRESHOLD = 16.69
 
 class Agent:
     def __init__(self, env, n_agent, edge_agent=None):
@@ -257,28 +259,28 @@ class EdgeAgent:
         laneWidthBike = self.traci.lane.getWidth(f'{self.edge_id}_1')
         laneWidthPed = self.traci.lane.getWidth(f'{self.edge_id}_0')
         
-        # The cosharing check is different due to the load and save state from previous episode. It may happen that the modified network i
-        if laneWidthBike == 0:
-            # print(str(coShare) + "--- YES Co-Sharing")
-            disallowed3 = ['private', 'emergency', 'authority', 'passenger','army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-            disallowed3.append('bicycle')
-            disallowed3.append('pedestrian')
-            self.traci.lane.setDisallowed(f'{self.edge_id}_0',disallowed3)
-            allowed = []
-            allowed.append('bicycle')
-            allowed.append('pedestrian')        
-            self.traci.lane.setAllowed(f'{self.edge_id}_0',allowed)
-            self.traci.lane.setDisallowed(f'{self.edge_id}_1', ["all"])			
-        else: 
-            # print(str(coShare) + "--- NO Co-Sharing")
-            disallowed = ['private', 'emergency', 'passenger','authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-            disallowed.append('pedestrian')
-            self.traci.lane.setDisallowed(f'{self.edge_id}_1',disallowed)
-            self.traci.lane.setAllowed(f'{self.edge_id}_1','bicycle')
-            disallowed2 = ['private', 'emergency', 'passenger', 'authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
-            disallowed2.append('bicycle')
-            self.traci.lane.setDisallowed(f'{self.edge_id}_0',disallowed2)
-            self.traci.lane.setAllowed(f'{self.edge_id}_0','pedestrian')
+        # # The cosharing check is different due to the load and save state from previous episode. It may happen that the modified network i
+        # if laneWidthBike == 0:
+        #     # print(str(coShare) + "--- YES Co-Sharing")
+        #     disallowed3 = ['private', 'emergency', 'authority', 'passenger','army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
+        #     disallowed3.append('bicycle')
+        #     disallowed3.append('pedestrian')
+        #     self.traci.lane.setDisallowed(f'{self.edge_id}_0',disallowed3)
+        #     allowed = []
+        #     allowed.append('bicycle')
+        #     allowed.append('pedestrian')        
+        #     self.traci.lane.setAllowed(f'{self.edge_id}_0',allowed)
+        #     self.traci.lane.setDisallowed(f'{self.edge_id}_1', ["all"])			
+        # else: 
+        #     # print(str(coShare) + "--- NO Co-Sharing")
+        #     disallowed = ['private', 'emergency', 'passenger','authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
+        #     disallowed.append('pedestrian')
+        #     self.traci.lane.setDisallowed(f'{self.edge_id}_1',disallowed)
+        #     self.traci.lane.setAllowed(f'{self.edge_id}_1','bicycle')
+        #     disallowed2 = ['private', 'emergency', 'passenger', 'authority', 'army', 'vip', 'hov', 'taxi', 'bus', 'coach', 'delivery', 'truck', 'trailer', 'motorcycle', 'moped', 'evehicle', 'tram', 'rail_urban', 'rail', 'rail_electric', 'rail_fast', 'ship', 'custom1', 'custom2']
+        #     disallowed2.append('bicycle')
+        #     self.traci.lane.setDisallowed(f'{self.edge_id}_0',disallowed2)
+        #     self.traci.lane.setAllowed(f'{self.edge_id}_0','pedestrian')
 
         laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
         if 'bicycle' in laneVehicleAllowedType:
@@ -404,25 +406,30 @@ class EdgeAgent:
             self.w_hinderance_b_p = 0.2
             self.w_hinderance_p_p = 0.1
             laneID = f'{self.edge_id}_0'
-            laneWidth = self.traci.lane.getWidth(laneID)/12.6
+            laneWidth = self.traci.lane.getWidth(laneID)#/12.6
             # los = -self.w_lane_width*laneWidth + self.w_total_occupancy*_occupany_ped_lane  + self.w_hinderance_b_b*_total_hinderance_bike_bike + \
             #      self.w_hinderance_b_p*_total_hinderance_bike_ped + self.w_hinderance_p_p*_total_hinderance_ped_ped
-            los = -laneWidth + _occupany_ped_lane  + _total_hinderance_bike_bike + \
-                  _total_hinderance_bike_ped + _total_hinderance_ped_ped
-
+            # los = -laneWidth + _occupany_ped_lane  + _total_hinderance_bike_bike + \
+            #       _total_hinderance_bike_ped + _total_hinderance_ped_ped
+            los = (_occupany_ped_lane  + _total_hinderance_bike_bike + 
+                   _total_hinderance_bike_ped + _total_hinderance_ped_ped)/laneWidth
         else:
             self.w_hinderance_b_b = 0.2
             self.w_hinderance_b_p = 0
             self.w_hinderance_p_p = 0.2
             pedLaneID = f'{self.edge_id}_0'
             bikeLaneID = f'{self.edge_id}_1'
-            pedLaneWidth = self.traci.lane.getWidth(pedLaneID)/12.6
-            bikeLaneWidth = self.traci.lane.getWidth(bikeLaneID)/12.6
+            pedLaneWidth = self.traci.lane.getWidth(pedLaneID)#/12.6
+            bikeLaneWidth = self.traci.lane.getWidth(bikeLaneID)#/12.6
             # los_ped_Lane = -self.w_lane_width*pedLaneWidth + self.w_total_occupancy*_occupany_ped_lane  + self.w_hinderance_p_p*_total_hinderance_ped_ped
             # los_bike_Lane = -self.w_lane_width*bikeLaneWidth + self.w_total_occupancy*_occupancy_bike_lane  + self.w_hinderance_b_b*_total_hinderance_bike_bike
-            los_ped_Lane = -pedLaneWidth + _occupany_ped_lane  + _total_hinderance_ped_ped
-            los_bike_Lane = -bikeLaneWidth + _occupancy_bike_lane  + _total_hinderance_bike_bike
-            los = (los_ped_Lane + los_bike_Lane)/2
+            # los_ped_Lane = -pedLaneWidth + _occupany_ped_lane  + _total_hinderance_ped_ped
+            # los_bike_Lane = -bikeLaneWidth + _occupancy_bike_lane  + _total_hinderance_bike_bike
+            # los = (los_ped_Lane + los_bike_Lane)/2
+
+            los_ped_Lane =  (_occupany_ped_lane  + _total_hinderance_ped_ped)/pedLaneWidth
+            los_bike_Lane = (_occupancy_bike_lane  + _total_hinderance_bike_bike)/bikeLaneWidth
+            los = (pedLaneWidth*los_ped_Lane + bikeLaneWidth*los_bike_Lane)/(pedLaneWidth + bikeLaneWidth)
 
         total_los = los
         return total_los
@@ -1193,7 +1200,7 @@ class SUMOEnv(gym.Env):
 
     def rewardAnalysisStats(self):			
         # return self._currentReward[0],self._currentReward[1]
-        return self._currentReward[0],self._currentReward[1],self._currentReward[2]
+        return self._currentReward
 
     @property
     def getAgentNames(self):
@@ -1208,12 +1215,15 @@ class SUMOEnv(gym.Env):
                 ped_length = 0.215
                 bike_length = 1.6
                 totalEdgeWidth = 12.6
+                carflow = max(0.01,agent._total_density_car_lane)
+                pedflow = max(0.01,agent._total_density_ped_lane)
+                bikeflow = max(0.01,agent._total_density_bike_lane)
                 # carflow = max(0.01,agent._total_occupancy_car_Lane/car_length)
                 # pedflow = max(0.01,agent._total_occupancy_ped_Lane/ped_length)
                 # bikeflow = max(0.01,agent._total_occupancy_bike_Lane/bike_length)
-                carflow = max(0.01,agent._total_unique_car_count/2)
-                pedflow = max(0.01,agent._total_unique_ped_count)
-                bikeflow = max(0.01,agent._total_unique_bike_count)
+                # carflow = max(0.01,agent._total_unique_car_count)
+                # pedflow = max(0.01,agent._total_unique_ped_count)
+                # bikeflow = max(0.01,agent._total_unique_bike_count)
                 
                 all_flows = [carflow, pedflow, bikeflow]
 
