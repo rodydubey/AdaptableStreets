@@ -1284,7 +1284,7 @@ class SUMOEnv(gym.Env):
 
         # sumoConfig = "gym_sumo/envs/sumo_configs/intersection.sumocfg"
         # self.sumoCMD = ["-c", sumoConfig] + self.sumoCMD
-        sumoStartArgs = ['-n', 'gym_sumo/envs/sumo_configs/intersection.net.xml', 
+        sumoStartArgs = ['-n', 'environment/intersection.net.xml', 
                            '-r', 'gym_sumo/envs/sumo_configs/intersection.rou.xml']
 
         # Initialize the simulation
