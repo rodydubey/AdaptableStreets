@@ -64,26 +64,21 @@ model = PPO("MlpPolicy", env, n_steps=6, verbose=1)
 def run(config):
     model_dir = Path('./models') / config.env_id / config.model_name
     # run_id = 'run225'
-    run_id = 'ppo_4.87'
+    run_id = f'ppo_{config.density}'
     run_dir = model_dir / run_id
     model.load(run_dir / 'model.pt')
     t = 0
     scores = []
     smoothed_total_reward = 0
     start_seed = 42
-    num_seeds = 1
+    num_seeds = config.num_seeds
     run_mode = 'Test'
     surge = True
     env.set_run_mode('Test', surge=surge)
 
-    # testResultFilePath = f"results/PPO_test_{'surge' if surge else 'nosurge'}_{run_id}.csv"
-    testResultFilePath = f"results/debug_ppo.csv"
+    testResultFilePath = f"results/PPO_test_{'surge' if surge else 'nosurge'}_{run_id}.csv"
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
-        # writer.writerow(['Car_Flow_Rate','Bike_Flow_Rate','Ped_Flow_Rate','Car_Lane_Width','Bike_Lane_Width','Ped_Lane_Width','Co_Sharing', \
-        #         'Total_occupancy_car_Lane','Total_occupancy_bike_Lane','Total_occupancy_ped_Lane','total_density_bike_lane','total_density_ped_lane','total_density_car_lane','RewardAgent_0', 'RewardAgent_1','RewardAgent_2','LevelOfService'])
-
-        # writer.writerow(['avg_waiting_time_car','avg_waiting_time_bike','avg_waiting_time_ped','avg_queue_length_car','avg_queue_length_bike','avg_queue_length_ped','los',"Reward_Agent_2","cosharing",'timeslot'])
         written_headers = False
         if num_seeds>1:
             seed_list = list(range(start_seed,start_seed+num_seeds))
@@ -93,7 +88,7 @@ def run(config):
             env.set_sumo_seed(seed)
             env.timeOfHour = 1 # hack
             # env.modeltype = modeltype # hack
-            env.firstTimeFlag = True
+            # env.firstTimeFlag = True
 
             # env.envs[0].set_sumo_seed(seed)
             # env.set_attr('timeOfHour', 1)  # hack
@@ -161,14 +156,15 @@ if __name__ == '__main__':
     parser.add_argument("--hidden_dim", default=64, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--tau", default=0.01, type=float)
+    parser.add_argument("--density", default=4.87, type=float)
+    parser.add_argument("--num_seeds", default=1, type=int)
     parser.add_argument("--agent_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])
     parser.add_argument("--adversary_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])
-    parser.add_argument("--discrete_action",
-                        action='store_true')
+    parser.add_argument("--modeltype", default='model', type=str)
 
     config = parser.parse_args()
 

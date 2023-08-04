@@ -15,9 +15,6 @@ from itertools import combinations, product
 from utilss import get_space_dims
 from scipy.spatial.distance import cdist
 
-DENSITY_THRESHOLD = 4.87
-# DENSITY_THRESHOLD = 9.27#0967
-# DENSITY_THRESHOLD = 16.69
 
 class Agent:
     def __init__(self, env, n_agent, edge_agent=None):
@@ -178,18 +175,14 @@ class Agent:
             # 	reward = negative_reward_collision
             
             if cosharing:
-                if self.edge_agent._total_density_ped_lane > DENSITY_THRESHOLD:
-                    # reward = -(self.edge_agent._total_density_ped_lane - DENSITY_THRESHOLD)/self.edge_agent._total_density_ped_lane
+                if self.edge_agent._total_density_ped_lane > self.env.density_threshold:
                     reward = -0.75
-                elif self.edge_agent._total_density_ped_lane < DENSITY_THRESHOLD:
-                    # reward = (DENSITY_THRESHOLD - self.edge_agent._total_density_ped_lane)/DENSITY_THRESHOLD
+                elif self.edge_agent._total_density_ped_lane < self.env.density_threshold:
                     reward = 0.75
             else:
-                if (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) > 2*DENSITY_THRESHOLD:
-                    # reward = (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane - 2*DENSITY_THRESHOLD)/(self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane)
+                if (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) > 2*self.env.density_threshold:
                     reward = 0.75
-                elif (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) < 2*DENSITY_THRESHOLD:
-                    # reward = -(2*DENSITY_THRESHOLD - self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane)/(2*DENSITY_THRESHOLD)
+                elif (self.edge_agent._total_density_ped_lane + self.edge_agent._total_density_bike_lane) < 2*self.env.density_threshold:
                     reward = -0.75
             self.edge_agent.reward_agent_2 = reward
 
@@ -409,8 +402,10 @@ class EdgeAgent:
             laneWidth = self.traci.lane.getWidth(laneID)#/12.6
             # los = -self.w_lane_width*laneWidth + self.w_total_occupancy*_occupany_ped_lane  + self.w_hinderance_b_b*_total_hinderance_bike_bike + \
             #      self.w_hinderance_b_p*_total_hinderance_bike_ped + self.w_hinderance_p_p*_total_hinderance_ped_ped
+            
             # los = -laneWidth + _occupany_ped_lane  + _total_hinderance_bike_bike + \
             #       _total_hinderance_bike_ped + _total_hinderance_ped_ped
+            
             los = (_occupany_ped_lane  + _total_hinderance_bike_bike + 
                    _total_hinderance_bike_ped + _total_hinderance_ped_ped)/laneWidth
         else:
@@ -423,6 +418,7 @@ class EdgeAgent:
             bikeLaneWidth = self.traci.lane.getWidth(bikeLaneID)#/12.6
             # los_ped_Lane = -self.w_lane_width*pedLaneWidth + self.w_total_occupancy*_occupany_ped_lane  + self.w_hinderance_p_p*_total_hinderance_ped_ped
             # los_bike_Lane = -self.w_lane_width*bikeLaneWidth + self.w_total_occupancy*_occupancy_bike_lane  + self.w_hinderance_b_b*_total_hinderance_bike_bike
+            
             # los_ped_Lane = -pedLaneWidth + _occupany_ped_lane  + _total_hinderance_ped_ped
             # los_bike_Lane = -bikeLaneWidth + _occupancy_bike_lane  + _total_hinderance_bike_bike
             # los = (los_ped_Lane + los_bike_Lane)/2
@@ -457,11 +453,16 @@ class EdgeAgent:
         else:
             cosharing = False
 
+        laneWidth = self.traci.lane.getWidth(f'{self.edge_id}_2')#/12.6
+        bikeLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_1')#/12.6
+        pedLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_0')#/12.6
         headers = ['avg_waiting_time_car', 'avg_waiting_time_bike', 'avg_waiting_time_ped',
                    'avg_queue_count_car', 'avg_queue_count_bike', 'avg_queue_count_ped',
+                   'car_lane_width', 'bike_lane_width', 'ped_lane_width',
                    'los', "Reward_Agent_2", "cosharing", 'edge_id']
         values = [avg_waiting_time_car, avg_waiting_time_bike, avg_waiting_time_ped,
                   avg_queue_count_car, avg_queue_count_bike, avg_queue_count_ped,
+                  laneWidth, bikeLaneWidth, pedLaneWidth,
                   los, self.reward_agent_2, cosharing, self.edge_id]
         return headers, values
 
@@ -578,9 +579,10 @@ class SUMOEnv(gym.Env):
                  observation_callback=None, info_callback=None,
                  done_callback=None, shared_viewer=True,mode='gui',
                  edges=['E0', '-E1','-E2', '-E3'], simulation_end=36000,
-                 joint_agents=False):
+                 joint_agents=False, density_threshold=4.87):
         self.pid = os.getpid()
         # self.sumoCMD = []
+        self.density_threshold = density_threshold
         self.modeltype = 'model'
         self.joint_agents = joint_agents
         self.generatedFiles = []
@@ -772,7 +774,7 @@ class SUMOEnv(gym.Env):
             self._routeFileName = "environment/newTrainFiles/intersection_Slot_" + str(self._slotId) + ".rou.xml"
         elif self._scenario=="Test":
             self._slotId = self.timeOfHour
-            # self._slotId = 35
+            # self._slotId = 36
             if self.is_surge:
                 folder = 'two'
             else:
@@ -1236,7 +1238,7 @@ class SUMOEnv(gym.Env):
                 bikeLaneWidth = max(1.5, beta*remainderRoad_0)
                 beta = bikeLaneWidth/remainderRoad_0
 
-                if (agent._total_density_ped_lane + agent._total_density_bike_lane) > 2*DENSITY_THRESHOLD:
+                if (agent._total_density_ped_lane + agent._total_density_bike_lane) > 2*self.density_threshold:
                     coshare = 0
                 else:
                     coshare = 1

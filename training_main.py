@@ -37,10 +37,10 @@ mode = 'gui' if (use_gui and display) else 'none'
 run_mode = 'Train'
 USE_CUDA = False  # torch.cuda.is_available()
 
-EDGES = ['E0']
-# EDGES = ['E0','-E1','-E2','-E3']
-generateFlowFiles("Train", edges=EDGES)
+# EDGES = ['E0']
+EDGES = ['E0','-E1','-E2','-E3']
 joint_agents = len(EDGES)>1
+generateFlowFiles("Train", edges=EDGES)
 
 env_kwargs = {'mode': mode,
               'edges': EDGES,
@@ -82,19 +82,12 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_ag
 
 def run(config, wandb_run):
     model_dir = Path('./models') / config.env_id / config.model_name
-    curr_run = f'maddpg_{gym_sumo.envs.sumo_env.DENSITY_THRESHOLD:.2f}'
+    # curr_run = f'maddpg_{env.:.2f}'
+    # curr_run = f'maddpg_{env.get_attr("density_threshold")[0]:.2f}'
+    curr_run = f'maddpg_{4.87}'
+    
     if joint_agents:
         curr_run += '_joint'
-    # if not model_dir.exists():
-    #     curr_run = 'maddpg1'
-    # else:
-    #     exst_run_nums = [int(str(folder.name).split('maddpg')[1]) for folder in
-    #                      model_dir.iterdir() if
-    #                      str(folder.name).startswith('maddpg')]
-    #     if len(exst_run_nums) == 0:
-    #         curr_run = 'maddpg1'
-    #     else:
-    #         curr_run = 'maddpg%i' % (max(exst_run_nums) + 1)
     run_dir = model_dir / curr_run
     log_dir = run_dir / 'logs'
     os.makedirs(log_dir, exist_ok=True)

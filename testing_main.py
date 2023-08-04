@@ -26,7 +26,6 @@ import csv
 from gym_sumo.envs.utils import generateFlowFiles
 from gym_sumo.envs.utils import plot_scores
 from gym_sumo.envs.utils import print_status
-from gym_sumo.envs.sumo_env import DENSITY_THRESHOLD
 
 display = 'DISPLAY' in os.environ
 use_gui = False
@@ -36,17 +35,22 @@ USE_CUDA = False  # torch.cuda.is_available()
 
 # mode = 'gui'
 
-EDGES = ['E0']
-joint_agents = False
+# EDGES = ['E0']
+# joint_agents = False
 # EDGES = ['E0','-E1','-E2','-E3']
 # joint_agents = True
 # generateFlowFiles("Test 0") 
-env_kwargs = {'mode': mode,
-              'edges': EDGES,
-              'joint_agents': joint_agents}
+
 def run(config):
+    EDGES = config.edges.split(',')
+    joint_agents = config.joint_agents
+    env_kwargs = {'mode': mode,
+                'edges': EDGES,
+                'joint_agents': joint_agents}
+    
+
     model_dir = Path('./models') / config.env_id / config.model_name
-    curr_run = f'{config.run_id}_{DENSITY_THRESHOLD:.2f}' + config.model_id
+    curr_run = f'{config.run_id}_{config.density:.2f}{"_joint" if joint_agents else ""}' + config.model_id
     run_dir = model_dir / curr_run
     log_dir = run_dir / 'logs'
 
@@ -73,21 +77,22 @@ def run(config):
     smoothed_total_reward = 0
     pid = os.getpid()
     start_seed = 42
-    num_seeds = 1
+    num_seeds = config.num_seeds
     # run_mode = 'Test Single Flow'
     run_mode = 'Test'
     surge = True
-    modeltype = 'model'
+    modeltype = config.modeltype#'model'
 
     # [_env.set_run_mode(run_mode) for _env in env.envs]
     env.set_run_mode(run_mode, surge=surge)
 
-    # testResultFilePath = f"results/static_test_surge_{config.run_id}.csv"  
+    # testResultFilePath = f"results/debug.csv"  
     # testResultFilePath = f"results/debug_static.csv"
     # testResultFilePath = f"results/debug_heuristic.csv"
-    # testResultFilePath = f"results/{modeltype}_4way_{'joint_' if joint_agents else ''}{'surge' if surge else 'nosurge'}.csv"  
-    # testResultFilePath = f"results/{modeltype}_warmup_factor_5.csv"  
-    testResultFilePath = f"results/{modeltype}_damian_{'surge' if surge else 'nosurge'}_d{DENSITY_THRESHOLD}.csv"  
+    if len(EDGES)==4:
+        testResultFilePath = f"results/{modeltype}_4way_{'joint_' if joint_agents else ''}{'surge' if surge else 'nosurge'}.csv"  
+    else:
+        testResultFilePath = f"results/{modeltype}_damian_{'surge' if surge else 'nosurge'}_d{config.density}.csv"  
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
         written_headers = False
@@ -133,7 +138,6 @@ def run(config):
                     agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
                     # rearrange actions to be per environment
                     actions = simplify_actions([ac[0] for ac in agent_actions])
-                    print('simple action', actions)
                     next_obs, rewards, dones, infos = env.step(actions)
                     obs = next_obs
                     t += config.n_rollout_threads
@@ -161,11 +165,11 @@ def run(config):
         
         env.close()
       
-    plt.plot(scores)
-    plt.xlabel('episodes')
-    plt.ylabel('ave rewards')
-    plt.savefig('avgScore.jpg')
-    plt.show()
+    # plt.plot(scores)
+    # plt.xlabel('episodes')
+    # plt.ylabel('ave rewards')
+    # plt.savefig('avgScore.jpg')
+    # plt.show()
         # logger.export_scalars_to_json(str(log_dir / 'summary.json'))
         # logger.close()
 
@@ -184,8 +188,6 @@ if __name__ == '__main__':
     # parser.add_argument("--run_id", default="run241", type=str) # run47 is performing the best on training data
     parser.add_argument("--run_id", default="maddpg", type=str) # run47 is performing the best on training data
     # parser.add_argument("--run_id", default="maddpg_4.87_joint", type=str) # run47 is performing the best on training data
-    # parser.add_argument("--run_id", default="/Users/damian/Downloads", type=str) # run47 is performing the best on training data
-    # parser.add_argument("--run_id", default="run112", type=str) # run47 is performing the best on training data
     parser.add_argument("--model_id", default="/model.pt", type=str)
     parser.add_argument("--model_name", default="simple_model", type=str)
     parser.add_argument("--seed",
@@ -207,15 +209,18 @@ if __name__ == '__main__':
     parser.add_argument("--hidden_dim", default=64, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--tau", default=0.01, type=float)
+    parser.add_argument("--density", default=4.87, type=float)
+    parser.add_argument("--num_seeds", default=1, type=int)
     parser.add_argument("--agent_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])
     parser.add_argument("--adversary_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])
-    parser.add_argument("--discrete_action",
-                        action='store_true')
-
+    parser.add_argument("--modeltype", default='model', type=str)
+    parser.add_argument("--edges", default="E0", type=str)
+    parser.add_argument("--joint_agents", action='store_true')
+    
     config = parser.parse_args()
 
     run(config)

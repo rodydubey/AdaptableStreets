@@ -120,7 +120,7 @@ model = PPO("MlpPolicy", env, n_steps=20, verbose=1,tensorboard_log='logs/')
 model.set_logger(new_logger)
 def run(config):
   model_dir = Path('./models') / config.env_id / config.model_name
-  curr_run = f'ppo_{gym_sumo.envs.sumo_env.DENSITY_THRESHOLD:.2f}'
+  curr_run = f'ppo_{env.get_attr("density_threshold")[0]:.2f}'
 #   if not model_dir.exists():
 #       curr_run = 'run1'
 #   else:
