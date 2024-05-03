@@ -588,7 +588,6 @@ class SUMOEnv(gym.Env):
         self.generatedFiles = []
         self._simulation_end = simulation_end
         self._mode = mode
-        # self._seed(40)
         np.random.seed(42)
         self.sumo_seed = np.random.randint(69142)
         self.counter = 2
@@ -1304,8 +1303,9 @@ class SUMOEnv(gym.Env):
         sumocmd = ["-c", sumoConfig] + sumocmd
         return sumocmd
     
-    def set_sumo_seed(self, seed):
+    def seed(self, seed):
         self.sumo_seed = seed
+        return super().seed(seed)
 
 
     def nextTimeSlot(self):

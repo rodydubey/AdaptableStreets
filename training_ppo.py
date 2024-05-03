@@ -106,40 +106,30 @@ env_kwargs = {'mode': mode,
 log_dir = "logs"
 if not os.path.exists(log_dir):
    os.makedirs(log_dir)
-# env = SUMOEnv()
-env = make_vec_env(SUMOEnvPPO, n_envs=4, env_kwargs=env_kwargs)
-env.env_method('set_run_mode', 'Train')
 
-new_logger = configure(log_dir, ["stdout", "csv", "tensorboard"])
-# check_env(env, warn=True)
-print(env.action_space)
-print(env.action_space.sample())
-print(env.observation_space)
-# env.reset()
-model = PPO("MlpPolicy", env, n_steps=20, verbose=1,tensorboard_log='logs/')
-model.set_logger(new_logger)
-def run(config):
-  model_dir = Path('./models') / config.env_id / config.model_name
-  curr_run = f'ppo_{env.get_attr("density_threshold")[0]:.2f}'
-#   if not model_dir.exists():
-#       curr_run = 'run1'
-#   else:
-#     exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in
-#                       model_dir.iterdir() if
-#                       str(folder.name).startswith('run')]
-#     if len(exst_run_nums) == 0:
-#         curr_run = 'run1'
-#     else:
-#         curr_run = 'run%i' % (max(exst_run_nums) + 1)
-  run_dir = model_dir / curr_run
-  # for ep_i in tqdm(range(0, config.n_episodes)):
-  #   total_reward = 0
-  #   print("Episodes %i-%i of %i" % (ep_i + 1,
-  #                                           ep_i + 1 + config.n_rollout_threads,
-  #                                           config.n_episodes))
-  #   # obs = env.reset()
+
+def run(model, config):
+    model_dir = Path('./models') / config.env_id / config.model_name
+    curr_run = f'ppo_{env.get_attr("density_threshold")[0]:.2f}'
+    #   if not model_dir.exists():
+    #       curr_run = 'run1'
+    #   else:
+    #     exst_run_nums = [int(str(folder.name).split('run')[1]) for folder in
+    #                       model_dir.iterdir() if
+    #                       str(folder.name).startswith('run')]
+    #     if len(exst_run_nums) == 0:
+    #         curr_run = 'run1'
+    #     else:
+    #         curr_run = 'run%i' % (max(exst_run_nums) + 1)
+    run_dir = model_dir / curr_run
+    # for ep_i in tqdm(range(0, config.n_episodes)):
+    #   total_reward = 0
+    #   print("Episodes %i-%i of %i" % (ep_i + 1,
+    #                                           ep_i + 1 + config.n_rollout_threads,
+    #                                           config.n_episodes))
+    #   # obs = env.reset()
     # Train the agent
-  model.learn(30000, reset_num_timesteps=True,tb_log_name="PPO",progress_bar=True,)
+    model.learn(30000, reset_num_timesteps=True,tb_log_name="PPO",progress_bar=True,)
     # step = 0
     # for et_i in range(config.episode_length):
     #   step += 1
@@ -152,7 +142,7 @@ def run(config):
     #   if done:
     #     print("Goal reached!", "reward=", reward)
     #     break
-  model.save(run_dir / 'model.pt')
+    model.save(run_dir / 'model.pt')
 
 
 if __name__ == '__main__':
@@ -189,4 +179,16 @@ if __name__ == '__main__':
 
     config = parser.parse_args()
 
-    run(config)
+    env = make_vec_env(SUMOEnvPPO, n_envs=4, seed=config.seed, env_kwargs=env_kwargs)
+    env.env_method('set_run_mode', 'Train')
+
+
+    new_logger = configure(log_dir, ["stdout", "csv", "tensorboard"])
+    # check_env(env, warn=True)
+    print(env.action_space)
+    print(env.action_space.sample())
+    print(env.observation_space)
+    # env.reset()
+    model = PPO("MlpPolicy", env, n_steps=20, verbose=1,tensorboard_log='logs/')
+    model.set_logger(new_logger)
+    run(model, config)

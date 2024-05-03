@@ -72,7 +72,7 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_ag
             env = SUMOEnv(mode=mode, edges=EDGES, joint_agents=joint_agents)
             env.seed(seed + rank * 1000)
             np.random.seed(seed + rank * 1000)
-            env.sumo_seed = seed + rank * 1000
+            # env.sumo_seed = seed + rank * 1000
             return env
         return init_env
     if n_rollout_threads == 1:
@@ -82,10 +82,7 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_ag
 
 def run(config, wandb_run):
     model_dir = Path('./models') / config.env_id / config.model_name
-    # curr_run = f'maddpg_{env.:.2f}'
-    # curr_run = f'maddpg_{env.get_attr("density_threshold")[0]:.2f}'
-    curr_run = f'maddpg_{4.87}'
-    
+    curr_run = f'maddpg_{4.87}_{config.n_rollout_threads}'
     if joint_agents:
         curr_run += '_joint'
     run_dir = model_dir / curr_run

@@ -85,7 +85,7 @@ def run(config):
         else:
             seed_list = [start_seed]
         for seed in seed_list: # realizations for averaging
-            env.set_sumo_seed(seed)
+            env.seed(seed)
             env.timeOfHour = 1 # hack
             # env.modeltype = modeltype # hack
             # env.firstTimeFlag = True
