@@ -37,8 +37,8 @@ mode = 'gui' if (use_gui and display) else 'none'
 run_mode = 'Train'
 USE_CUDA = False  # torch.cuda.is_available()
 
-# EDGES = ['E0']
-EDGES = ['E0','-E1','-E2','-E3']
+EDGES = ['E0']
+# EDGES = ['E0','-E1','-E2','-E3']
 joint_agents = len(EDGES)>1
 generateFlowFiles("Train", edges=EDGES)
 
@@ -82,7 +82,7 @@ def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_ag
 
 def run(config, wandb_run):
     model_dir = Path('./models') / config.env_id / config.model_name
-    curr_run = f'maddpg_{4.87}_{config.n_rollout_threads}'
+    curr_run = f'maddpg_{4.87}_{config.seed}'
     if joint_agents:
         curr_run += '_joint'
     run_dir = model_dir / curr_run
@@ -236,8 +236,8 @@ if __name__ == '__main__':
     parser.add_argument("--env_id", default="simple", type=str)
     parser.add_argument("--model_name", default="simple_model", type=str)
     parser.add_argument("--seed",
-                        default=1, type=int,
-                        help="Random seed")
+                        default=42, type=int,
+                        help="Random seed") #42,43,44,45,46
     parser.add_argument("--n_rollout_threads", default=1, type=int)
     parser.add_argument("--n_training_threads", default=4, type=int)
     parser.add_argument("--buffer_length", default=int(1e6), type=int)
@@ -269,7 +269,7 @@ if __name__ == '__main__':
     if not save:
         use_wandb = 'disabled'
     wandb_run = wandb.init(
-        project=f"Discrete_Rohit{'MADDPG_'.lower()}",
+        project=f"AdaptableLanesRevisionTRC{'MADDPG_'.lower()}",
         tags=["MADDPG_final?", "RL"],
         mode=use_wandb,
     )

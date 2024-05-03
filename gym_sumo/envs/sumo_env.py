@@ -1076,9 +1076,9 @@ class SUMOEnv(gym.Env):
                 edge_agent._total_unique_ped_count = len(np.unique(np.array(edge_agent._unique_ped_count_list).flatten()))
 
                 edge_agent._levelOfService = edge_agent.LevelOfService(edge_agent.cosharing)
-                print(f"Level of Service: {edge_agent.LevelOfService(edge_agent.cosharing):.3f}")
-                print(f"Cosharing: {edge_agent.cosharing}")
-                print(f"Density: {(edge_agent._total_density_ped_lane + edge_agent._total_density_bike_lane):.3f}")
+                # print(f"Level of Service: {edge_agent.LevelOfService(edge_agent.cosharing):.3f}")
+                # print(f"Cosharing: {edge_agent.cosharing}")
+                # print(f"Density: {(edge_agent._total_density_ped_lane + edge_agent._total_density_bike_lane):.3f}")
             
         # 	if 'bicycle' in laneVehicleAllowedType:
         # 		cosharing = True
@@ -1189,7 +1189,7 @@ class SUMOEnv(gym.Env):
         # reward_n[0] = cooperative_reward
         # reward_n[1] = cooperative_reward
         reward = np.sum(reward_n)
-        print("Reward = " + str(reward_n), done_n)
+        # print("Reward = " + str(reward_n), done_n)
         if self.shared_reward:
             reward_n = [reward] *self.n
         self._lastReward = reward_n[0]
