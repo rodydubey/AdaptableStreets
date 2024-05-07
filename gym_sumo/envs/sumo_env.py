@@ -352,7 +352,7 @@ class EdgeAgent:
         # self._EmergencyBraking_count_bike += bikeBrakeCount
         # self._EmergencyBraking_count_ped += pedBrakeCount
         if self.env._sumo_step % 10 == 0 and ("Test" in self.env._scenario):
-             self._emergencyStoppingVehicleCount += self.traci.simulation.getEmergencyStoppingVehiclesNumber()
+            self._emergencyStoppingVehicleCount += self.traci.simulation.getEmergencyStoppingVehiclesNumber()
             self._collidingVehicleCount += len(self.traci.simulation.getCollidingVehiclesIDList())
             # self._collisions = len(self.traci.simulation.getCollisions())
             self._teleportingVehicleCount += self.traci.simulation.getEndingTeleportNumber()
