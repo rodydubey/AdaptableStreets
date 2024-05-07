@@ -46,11 +46,13 @@ def run(config):
     joint_agents = config.joint_agents
     env_kwargs = {'mode': mode,
                 'edges': EDGES,
-                'joint_agents': joint_agents}
+                'joint_agents': joint_agents,
+                'load_state': config.load_state}
     
 
     model_dir = Path('./models') / config.env_id / config.model_name
-    curr_run = f'{config.run_id}_{config.density:.2f}{"_joint" if joint_agents else ""}' + config.model_id
+    curr_run = f'{config.run_id}_{config.density:.2f}{"_joint" if joint_agents else ""}_{config.seed}' + config.model_id 
+    # curr_run = f'{config.run_id}_{config.density}_{config.seed}' + config.model_id
     run_dir = model_dir / curr_run
     log_dir = run_dir / 'logs'
 
@@ -92,7 +94,7 @@ def run(config):
     if len(EDGES)==4:
         testResultFilePath = f"results/{modeltype}_4way_{'joint_' if joint_agents else ''}{'surge' if surge else 'nosurge'}.csv"  
     else:
-        testResultFilePath = f"results/{modeltype}_damian_{'surge' if surge else 'nosurge'}_d{config.density}.csv"  
+        testResultFilePath = f"results/{modeltype}_damian_{'surge' if surge else 'nosurge'}_d{config.density}_{config.seed}.csv" 
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
         written_headers = False
@@ -191,7 +193,7 @@ if __name__ == '__main__':
     parser.add_argument("--model_id", default="/model.pt", type=str)
     parser.add_argument("--model_name", default="simple_model", type=str)
     parser.add_argument("--seed",
-                        default=1, type=int,
+                        default=42, type=int,
                         help="Random seed")
     parser.add_argument("--n_rollout_threads", default=1, type=int)
     parser.add_argument("--n_training_threads", default=6, type=int)
@@ -210,17 +212,19 @@ if __name__ == '__main__':
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--tau", default=0.01, type=float)
     parser.add_argument("--density", default=4.87, type=float)
-    parser.add_argument("--num_seeds", default=1, type=int)
+    parser.add_argument("--num_seeds", default=5, type=int)
     parser.add_argument("--agent_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])
     parser.add_argument("--adversary_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])
-    parser.add_argument("--modeltype", default='model', type=str)
+    parser.add_argument("--modeltype", default='model', type=str,
+                         choices=['model', 'heuristic','static'])
     parser.add_argument("--edges", default="E0", type=str)
     parser.add_argument("--joint_agents", action='store_true')
-    
+    parser.add_argument("--load_state", action='store_true')
+
     config = parser.parse_args()
 
-    run(config)
+    run(config) 

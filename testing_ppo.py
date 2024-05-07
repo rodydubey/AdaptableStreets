@@ -138,7 +138,7 @@ if __name__ == '__main__':
     parser.add_argument("--model_name", default="simple_model", type=str)
     # parser.add_argument("--run_id", default="run12", type=str) # run47 is performing the best on training data
     parser.add_argument("--seed",
-                        default=1, type=int,
+                        default=42, type=int,
                         help="Random seed")
     parser.add_argument("--n_rollout_threads", default=1, type=int)
     parser.add_argument("--n_training_threads", default=6, type=int)
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--tau", default=0.01, type=float)
     parser.add_argument("--density", default=4.87, type=float)
-    parser.add_argument("--num_seeds", default=1, type=int)
+    parser.add_argument("--num_seeds", default=5, type=int)
     parser.add_argument("--agent_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])

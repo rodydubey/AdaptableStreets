@@ -265,7 +265,7 @@ if __name__ == '__main__':
 
     config = parser.parse_args()
 
-    use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, or disabled
+    use_wandb = os.environ.get('WANDB_MODE', 'online') # can be online, offline, or disabled
     if not save:
         use_wandb = 'disabled'
     wandb_run = wandb.init(

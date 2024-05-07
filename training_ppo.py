@@ -1,3 +1,11 @@
+import numpy as np
+import gym_sumo
+import gym
+from stable_baselines3.common.logger import configure
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3 import PPO
+from wandb.integration.sb3 import WandbCallback
+import wandb
 import argparse
 import os
 from pathlib import Path
@@ -7,54 +15,53 @@ from gym_sumo.envs.utils import generateFlowFiles
 from matplotlib import pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
-# import wandb
 
-import os
-from stable_baselines3 import PPO
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.logger import configure
-import gym
-import gym_sumo
-import numpy as np
 # from stable_baselines3.common.results_plotter import load_results, ts2xy
 # from stable_baselines3.common.utils import set_random_seed
 # from stable_baselines3.common.callbacks import BaseCallback
 # from stable_baselines3.common.vec_env import VecMonitor
 
 
-# use_wandb = os.environ.get('WANDB_MODE', 'disabled') # can be online, offline, or disabled
-# wandb.init(
-#   project=f"Discrete_Rohit{'MADDPG_'.lower()}",
-#   tags=["MADDPG_4", "RL"],
-#   mode=use_wandb
-# )
+# can be online, offline, or disabled
+use_wandb = os.environ.get('WANDB_MODE', 'online')
+wandb_run = wandb.init(
+    project=f"AdaptableLanesRevisionTRC{'PPO_'.lower()}",
+    tags=["PPO_Final?", "RL"],
+    mode=use_wandb,
+    sync_tensorboard=True
+)
+
 
 class SUMOEnvPPO(SUMOEnv):
-    def __init__(self, reset_callback=None, reward_callback=None, observation_callback=None, info_callback=None, done_callback=None, shared_viewer=True, mode='gui', edges=..., simulation_end=36000, joint_agents=False):
-        super().__init__(reset_callback, reward_callback, observation_callback, info_callback, done_callback, shared_viewer, mode, edges, simulation_end, joint_agents)
-        self.action_space = gym.spaces.MultiDiscrete([5,9,2])
+    def __init__(self, reset_callback=None, reward_callback=None, observation_callback=None, info_callback=None, done_callback=None, shared_viewer=True, mode='gui', 
+                 edges=..., simulation_end=36000, joint_agents=False, episode_length=20):
+        super().__init__(reset_callback, reward_callback, observation_callback, info_callback,
+                         done_callback, shared_viewer, mode, edges, simulation_end, joint_agents)
+        self.action_space = gym.spaces.MultiDiscrete([5, 9, 2])
         # observation space
-        self.observation_space = gym.spaces.Box(low=0, high=10, shape=(11,),dtype=np.float64)
-        self._episode_length = 0
+        self.observation_space = gym.spaces.Box(
+            low=0, high=10, shape=(11,), dtype=np.float64)
+        self.episode_length = episode_length
+        self._episode_length_counter = 0
 
     def _get_obs(self, agent):
         return self.getState(self.edge_agents[0])
-    
+
     def getState(self, edge_agent):
         """
         Retrieve the state of the network from sumo. 
         """
-        edge_id = edge_agent.edge_id 
+        edge_id = edge_agent.edge_id
         normalizeUniqueVehicleCount = 300
         laneWidthCar = self.traci.lane.getWidth(f'{edge_id}_2')
         laneWidthBike = self.traci.lane.getWidth(f'{edge_id}_1')
         laneWidthPed = self.traci.lane.getWidth(f'{edge_id}_0')
-        nLaneWidthCar = np.interp(laneWidthCar, [0,12.6], [0,1])
-        nLaneWidthBike = np.interp(laneWidthBike, [0,12.6], [0,1])
-        nLaneWidthPed = np.interp(laneWidthPed, [0,12.6], [0,1])
+        nLaneWidthCar = np.interp(laneWidthCar, [0, 12.6], [0, 1])
+        nLaneWidthBike = np.interp(laneWidthBike, [0, 12.6], [0, 1])
+        nLaneWidthPed = np.interp(laneWidthPed, [0, 12.6], [0, 1])
 
-        #E0 is for agent 0 and 1, #-E0 is for agent 2 and 3, #E1 is for agent 4 and 5, #-E1 is for agent 6 and 7
-        #E2 is for agent 8 and 9, #-E2 is for agent 10 and 11, #E3 is for agent 12 and 13, #-E3 is for agent 14 and 15
+        # E0 is for agent 0 and 1, #-E0 is for agent 2 and 3, #E1 is for agent 4 and 5, #-E1 is for agent 6 and 7
+        # E2 is for agent 8 and 9, #-E2 is for agent 10 and 11, #E3 is for agent 12 and 13, #-E3 is for agent 14 and 15
 
         laneVehicleAllowedType = self.traci.lane.getAllowed(f'{edge_id}_0')
         if 'bicycle' in laneVehicleAllowedType:
@@ -66,34 +73,36 @@ class SUMOEnvPPO(SUMOEnv):
         state_0 = laneWidthCar
         state_1 = laneWidthBike
         state_2 = laneWidthPed
-        state_3 = edge_agent._total_occupancy_car_Lane	
+        state_3 = edge_agent._total_occupancy_car_Lane
         state_4 = edge_agent._total_density_car_lane
         state_5 = edge_agent._total_occupancy_bike_Lane
         state_6 = edge_agent._total_occupancy_ped_Lane
-        state_7 = float(cosharing) #flag for cosharing on or off
+        state_7 = float(cosharing)  # flag for cosharing on or off
         state_8 = float(np.abs(cosharing-1))
         state_9 = edge_agent._total_density_bike_lane
         state_10 = edge_agent._total_density_ped_lane
 
-        state = [state_0, state_1, state_2, state_3, state_4, state_5, state_6, state_7, state_8, state_9, state_10]
+        state = [state_0, state_1, state_2, state_3, state_4,
+                 state_5, state_6, state_7, state_8, state_9, state_10]
 
         return np.array(state)
-    
+
     def reset(self, *args):
         obs = super().reset(*args)
-        self._episode_length = 0
+        self._episode_length_counter = 0
         return list(obs.values())[0]
-    
-    def step(self,action_n):
+
+    def step(self, action_n):
         obs_n, reward_n, done_n, info_n = super().step(action_n)
-        self._episode_length += 1
+        self._episode_length_counter += 1
         obs_n = list(obs_n.values())[0]
         reward_n = reward_n[0]
 
-		# if self._episode_length >= 20:
-		# 	self._done = True
-        done_n = self._episode_length >= 20
+        # if self._episode_length_counter >= 20:
+        # 	self._done = True
+        done_n = self._episode_length_counter >= self.episode_length
         return obs_n, reward_n, done_n, info_n
+
 
 EDGES = ['E0']
 generateFlowFiles("Train", edges=EDGES)
@@ -105,12 +114,12 @@ env_kwargs = {'mode': mode,
 
 log_dir = "logs"
 if not os.path.exists(log_dir):
-   os.makedirs(log_dir)
+    os.makedirs(log_dir)
 
 
 def run(model, config):
     model_dir = Path('./models') / config.env_id / config.model_name
-    curr_run = f'ppo_{env.get_attr("density_threshold")[0]:.2f}'
+    curr_run = f'ppo_{env.get_attr("density_threshold")[0]:.2f}_{config.seed}'
     #   if not model_dir.exists():
     #       curr_run = 'run1'
     #   else:
@@ -129,7 +138,10 @@ def run(model, config):
     #                                           config.n_episodes))
     #   # obs = env.reset()
     # Train the agent
-    model.learn(30000, reset_num_timesteps=True,tb_log_name="PPO",progress_bar=True,)
+    model.learn(total_timesteps=config.n_episodes*config.episode_length, reset_num_timesteps=True, tb_log_name="PPO", progress_bar=True,
+                callback=WandbCallback(
+                    model_save_path=run_dir,
+                    verbose=2,))
     # step = 0
     # for et_i in range(config.episode_length):
     #   step += 1
@@ -150,13 +162,13 @@ if __name__ == '__main__':
     parser.add_argument("--env_id", default="simple", type=str)
     parser.add_argument("--model_name", default="simple_model", type=str)
     parser.add_argument("--seed",
-                        default=1, type=int,
+                        default=42, type=int,
                         help="Random seed")
     parser.add_argument("--n_rollout_threads", default=1, type=int)
     parser.add_argument("--n_training_threads", default=6, type=int)
     parser.add_argument("--buffer_length", default=int(1e6), type=int)
-    parser.add_argument("--n_episodes", default=5, type=int)
-    parser.add_argument("--episode_length", default=5, type=int)
+    parser.add_argument("--n_episodes", default=1500, type=int)
+    parser.add_argument("--episode_length", default=20, type=int)
     parser.add_argument("--steps_per_update", default=10, type=int)
     parser.add_argument("--batch_size",
                         default=1024, type=int,
@@ -178,10 +190,11 @@ if __name__ == '__main__':
                         action='store_true')
 
     config = parser.parse_args()
+    env_kwargs['episode_length'] = config.episode_length
 
-    env = make_vec_env(SUMOEnvPPO, n_envs=4, seed=config.seed, env_kwargs=env_kwargs)
+    env = make_vec_env(SUMOEnvPPO, n_envs=1,
+                       seed=config.seed, env_kwargs=env_kwargs)
     env.env_method('set_run_mode', 'Train')
-
 
     new_logger = configure(log_dir, ["stdout", "csv", "tensorboard"])
     # check_env(env, warn=True)
@@ -189,6 +202,8 @@ if __name__ == '__main__':
     print(env.action_space.sample())
     print(env.observation_space)
     # env.reset()
-    model = PPO("MlpPolicy", env, n_steps=20, verbose=1,tensorboard_log='logs/')
+    model = PPO("MlpPolicy", env, n_steps=20, verbose=1,
+                tensorboard_log=f'logs/{wandb_run.id}', device='cpu', seed=config.seed)
     model.set_logger(new_logger)
     run(model, config)
+    wandb_run.finish()
