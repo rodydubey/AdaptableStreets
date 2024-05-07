@@ -243,8 +243,18 @@ class EdgeAgent:
         self._total_density_ped_lane = 0
         self._total_density_car_lane = 0
         self._total_hinderance_bike_bike = 0
+        self._total_hinderance_car_car = 0
         self._total_hinderance_bike_ped = 0
         self._total_hinderance_ped_ped = 0
+        self._total_hinderance_car_ped = 0
+        self._total_hinderance_car_bike = 0
+        self._total_col_car_ped = 0
+        self._total_col_car_bike = 0
+        self._total_col_car_car = 0
+        self._emergencyStoppingVehicleCount = 0
+        self._collidingVehicleCount = 0
+        self._teleportingVehicleCount = 0
+
         self._levelOfService = 0 
         
     def collectObservation(self):
@@ -341,7 +351,12 @@ class EdgeAgent:
         # self._EmergencyBraking_count_bike += bikeBrakeCount
         # self._EmergencyBraking_count_bike += bikeBrakeCount
         # self._EmergencyBraking_count_ped += pedBrakeCount
-        
+        if self.env._sumo_step % 10 == 0 and ("Test" in self.env._scenario):
+             self._emergencyStoppingVehicleCount += self.traci.simulation.getEmergencyStoppingVehiclesNumber()
+            self._collidingVehicleCount += len(self.traci.simulation.getCollidingVehiclesIDList())
+            # self._collisions = len(self.traci.simulation.getCollisions())
+            self._teleportingVehicleCount += self.traci.simulation.getEndingTeleportNumber()
+
         if cosharing:
             #Agent 1
             # Count total number of unique pedestrian on the ped lane
@@ -359,10 +374,12 @@ class EdgeAgent:
             # self._collision_count_ped += pedCollisionCount
 
             if self.env._sumo_step % 10 == 0 and ("Test" in self.env._scenario):
-                h_b_b, h_b_p, h_p_p =  self.getHinderanceWhenCosharing(f'{self.edge_id}_0')
+                h_b_b, h_b_p, h_p_p, h_c_p, h_c_b =  self.getHinderanceWhenCosharing(f'{self.edge_id}_0')
                 self._total_hinderance_bike_bike += h_b_b
                 self._total_hinderance_bike_ped += h_b_p
                 self._total_hinderance_ped_ped += h_p_p
+                self._total_hinderance_car_ped += h_c_p
+                self._total_hinderance_car_bike += h_c_b
             # print("hinderance bike with ped : " + str(hinderance))
 
         else:
@@ -376,6 +393,10 @@ class EdgeAgent:
             if self.env._sumo_step % 10 == 0 and ("Test" in self.env._scenario):
                 self._total_hinderance_bike_bike += self.getHinderance(f'{self.edge_id}_1',"bike_bike")
                 self._total_hinderance_ped_ped += self.getHinderance(f'{self.edge_id}_0',"ped_ped")
+                self._total_hinderance_car_car += self.getHinderance(f'{self.edge_id}_2',"car_car")
+
+            if self._total_hinderance_car_car > 0:
+                t = 0
 
             #Agent 2
             # self._collision_count_bike += bikeCollisionCount
@@ -447,6 +468,8 @@ class EdgeAgent:
         avg_queue_length_ped = self._queue_Length_ped/self.env.action_steps
         avg_queue_count_ped = self._queue_Count_ped/self.env.action_steps
         los = self._levelOfService
+        safety = self._emergencyStoppingVehicleCount+self._collidingVehicleCount
+        teleport = self._teleportingVehicleCount
         laneVehicleAllowedType = self.traci.lane.getAllowed(f'{self.edge_id}_0')
         if 'bicycle' in laneVehicleAllowedType:
             cosharing = True
@@ -459,11 +482,11 @@ class EdgeAgent:
         headers = ['avg_waiting_time_car', 'avg_waiting_time_bike', 'avg_waiting_time_ped',
                    'avg_queue_count_car', 'avg_queue_count_bike', 'avg_queue_count_ped',
                    'car_lane_width', 'bike_lane_width', 'ped_lane_width',
-                   'los', "Reward_Agent_2", "cosharing", 'edge_id']
+                   'los', "Reward_Agent_2", "cosharing", 'edge_id','safety','teleport']
         values = [avg_waiting_time_car, avg_waiting_time_bike, avg_waiting_time_ped,
                   avg_queue_count_car, avg_queue_count_bike, avg_queue_count_ped,
                   laneWidth, bikeLaneWidth, pedLaneWidth,
-                  los, self.reward_agent_2, cosharing, self.edge_id]
+                  los, self.reward_agent_2, cosharing, self.edge_id,safety,teleport]
         return headers, values
 
 
@@ -520,6 +543,7 @@ class EdgeAgent:
     def getHinderanceWhenCosharing(self,laneID):
         bikeList = []
         pedList = []
+        carList = []
         
         allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)         
         if len(allVehicles) > 1:
@@ -530,21 +554,29 @@ class EdgeAgent:
                     bikeList.append(veh)
                 elif vehID[0]=="0":
                     pedList.append(veh)
+                elif vehID[0]=="2":
+                    carList.append(veh)
 
         pos_bikes = np.array([list(self.traci.vehicle.getPosition(bike)) for bike in bikeList]).reshape((-1,2))
         pos_peds = np.array([list(self.traci.vehicle.getPosition(ped)) for ped in pedList]).reshape((-1,2))
+        pos_cars = np.array([list(self.traci.vehicle.getPosition(car)) for car in carList]).reshape((-1,2))
 
         pp = cdist(pos_peds,pos_peds)
         bb = cdist(pos_bikes,pos_bikes)
+        cc = cdist(pos_cars,pos_cars)
         ##  divide by 2 when doublecounting
         h_p_p = np.sum((0<pp) & (pp<1))/2 # diagonals are self loops
         h_b_b = np.sum((0<bb) & (bb<1))/2 # diagonals are self loops
+        h_c_c = np.sum((0<cc) & (cc<1))/2 # diagonals are self loops
         h_b_p = np.sum(cdist(pos_bikes,pos_peds)<1)
-        return h_b_b,h_b_p,h_p_p
+        h_c_p = np.sum(cdist(pos_cars,pos_peds)<1)
+        h_c_b = np.sum(cdist(pos_cars,pos_bikes)<1)
+        return h_b_b,h_b_p,h_p_p,h_c_p,h_c_b
 
     def getHinderance(self,laneID,betweenVehicleType):
         bikeList = []
         pedList = []
+        carList = []
         allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)
         if len(allVehicles) > 1:
             for veh in allVehicles:
@@ -554,12 +586,17 @@ class EdgeAgent:
                     bikeList.append(veh)
                 elif vehID[0]=="0":
                     pedList.append(veh)
+                elif vehID[0]=="2":
+                    carList.append(veh)
         pos_bikes = np.array([list(self.traci.vehicle.getPosition(bike)) for bike in bikeList]).reshape((-1,2))
         pos_peds = np.array([list(self.traci.vehicle.getPosition(ped)) for ped in pedList]).reshape((-1,2))
+        pos_cars = np.array([list(self.traci.vehicle.getPosition(car)) for car in carList]).reshape((-1,2))
 
         pp = cdist(pos_peds,pos_peds)
         bb = cdist(pos_bikes,pos_bikes)
         bp = cdist(pos_bikes,pos_peds)
+        cc = cdist(pos_cars,pos_cars)
+
         if betweenVehicleType == "bike_bike":
             hinderance = np.sum((0<bb) & (bb<1))/2 # diagonals are self loops
 
@@ -568,6 +605,9 @@ class EdgeAgent:
     
         elif betweenVehicleType == "ped_ped":
             hinderance = np.sum((0<pp) & (pp<1))/2 # diagonals are self loops
+        
+        elif betweenVehicleType == "car_car":
+            hinderance = np.sum((0<cc) & (cc<1))/2 # diagonals are self loops
 
         return hinderance
     
@@ -579,8 +619,9 @@ class SUMOEnv(gym.Env):
                  observation_callback=None, info_callback=None,
                  done_callback=None, shared_viewer=True,mode='gui',
                  edges=['E0', '-E1','-E2', '-E3'], simulation_end=36000,
-                 joint_agents=False, density_threshold=4.87):
+                 joint_agents=False, density_threshold=4.87, load_state=False):
         self.pid = os.getpid()
+        self.load_state = load_state
         # self.sumoCMD = []
         self.density_threshold = density_threshold
         self.modeltype = 'model'
@@ -807,11 +848,14 @@ class SUMOEnv(gym.Env):
                 self.traci.simulationStep() 		# Take a simulation step to initialize
                 self.collectObservation()
                 self._sumo_step +=1
-            # if self.modeltype != 'static':
-            #     self.firstTimeFlag = False
+            if self.modeltype != 'static' and self.load_state:
+                self.firstTimeFlag = False
         else:
             modified_netfile = f'environment/intersection2_{self.pid}.net.xml'
             self.traci.load(self.sumoCMD + ['-n', modified_netfile, '-r', self._routeFileName])
+            # if self.load_state:
+            #     self.traci.simulation.loadState(self.state_file)
+
         
         
         
@@ -1054,7 +1098,8 @@ class SUMOEnv(gym.Env):
             self._set_action(temp_action_dict, self.modeltype)
             actionFlag = False
             # if 'Test' in self._scenario:
-            self.warmup()
+            if not self.load_state:
+                self.warmup()
         if self._scenario in ["Train", "Test", "Test Single Flow"]:
             #reset all variables
             for edge_agent in self.edge_agents:
@@ -1265,12 +1310,12 @@ class SUMOEnv(gym.Env):
         Configure various parameters of SUMO
         """
         # sumo things - we need to import python modules from the $SUMO_HOME/tools directory
-        if 'SUMO_HOME' in os.environ:
-            tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
-            sys.path.append(tools)
-            print(tools)
-        else:
-            sys.exit("please declare environment variable 'SUMO_HOME'")
+        # if 'SUMO_HOME' in os.environ:
+        #     tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
+        #     sys.path.append(tools)
+        #     print(tools)
+        # else:
+        #     sys.exit("please declare environment variable 'SUMO_HOME'")
 
                         # "--device.rerouting.probability","1","--device.rerouting.period","1",
         # self.sumoCMD = ["--time-to-teleport.disconnected",str(1),"--ignore-route-errors",

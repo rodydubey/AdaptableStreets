@@ -98,8 +98,10 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
 
 
     # save state
-    # traci.simulation.clearPending()
-    # traci.simulation.saveState(f'environment/savedstate_{pid}.xml') 
+    if env.load_state:
+        env.state_file = f'environment/savedstate_{pid}.xml'
+        traci.simulation.clearPending()
+        traci.simulation.saveState(env.state_file) 
     # load traci simulation   
     # traci.load(['-n', "environment\intersection2.net.xml","--start"])
     currentTime = (env.timeOfHour-1)*6*300 # TODO: fix hardcoded
@@ -115,7 +117,9 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
     # if env._scenario == "Test Single Flow":
     #     traci.simulationStep(currentTime)
     # load last saved state
-    # traci.simulation.loadState(f'environment/savedstate_{pid}.xml')
+    if env.load_state:
+        traci.simulation.loadState(env.state_file)
+        env.generatedFiles.append(env.state_file)
 
     if modelType != 'static':
         for edge_id, props in edge_props.items():
