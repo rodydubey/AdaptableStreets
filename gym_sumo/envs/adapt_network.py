@@ -20,7 +20,6 @@ carLane_width_actions = ['3.2','5.6','6.4','7.8','9.6']
 bikeLane_width_actions = ['0.1','0.2','0.3','0.4','0.5','0.6','0.7','0.8','0.9']
 
 netconvert = checkBinary("netconvert")
-sys.path.append(netconvert)
 
 def clamp(n, minn, maxn):
     return max(min(maxn, n), minn)
@@ -62,7 +61,8 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
                     coShare = 1  
                 props['coShare'] = coShare
             edge_props[edge_id] = props
-            edge_props[from_tos[edge_id]] = props # also set properties of downstream
+            if len(sumo_edges)!=5: # NOTE: CHECK IF CAUSES PROBLEMS, HACK FOR BARCELONA
+                edge_props[from_tos[edge_id]] = props # also set properties of downstream
 
         for edge_id, props in edge_props.items():
             carLaneWidth = props['carLaneWidth']
@@ -75,14 +75,23 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
                 if coShare <= 0.5:            
                     if lanes.attrib['id'] == f"{edge_id}_1":
                         lanes.attrib['width'] = repr(bikeLaneWidth)
+                        lanes.attrib.pop('disallow', None)
+                        lanes.attrib['allow'] = 'bicycle'
+
                     elif lanes.attrib['id'] == f"{edge_id}_0":
                         lanes.attrib['width'] = repr(pedLaneWidth)
+                        lanes.attrib.pop('disallow', None)
+                        lanes.attrib['allow'] = 'pedestrian'
                 else:             
                     if lanes.attrib['id'] == f"{edge_id}_0":
                         lanes.attrib['width'] = repr(bikeLaneWidth+pedLaneWidth)
+                        lanes.attrib.pop('disallow', None)
+                        lanes.attrib['allow'] = 'bicycle pedestrian'
                     elif lanes.attrib['id'] == f"{edge_id}_1":
                         lanes.attrib['width'] = repr(0)
-        
+                        lanes.attrib['disallow'] = 'all'
+                        lanes.attrib.pop('allow', None)
+
         #  write xml 
         modified_netfile = f'environment/intersection2_{pid}.net.xml'
         file_handle = open(modified_netfile,"wb")
@@ -90,7 +99,7 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
         file_handle.close()
         if modified_netfile not in env.generatedFiles:
             env.generatedFiles.append(modified_netfile)
-        subprocess.run(f"netconvert -s {modified_netfile} -o {modified_netfile} -W", capture_output=True, shell=True)
+        subprocess.run(f"{netconvert} -s {modified_netfile} -o {modified_netfile} -W", capture_output=True, shell=True)
     else:
         modified_netfile = base_network
     # call netconvert            
@@ -119,24 +128,5 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
     # load last saved state
     if env.load_state:
         traci.simulation.loadState(env.state_file)
-        env.generatedFiles.append(env.state_file)
-
-    if modelType != 'static':
-        for edge_id, props in edge_props.items():
-            carLaneWidth = props['carLaneWidth']
-            bikeLaneWidth = props['bikeLaneWidth']
-            pedLaneWidth = props['pedLaneWidth']
-            coShare = props['coShare']
-            #change lane sharing based on agent choice
-            if coShare <= 0.5:
-                traci.lane.setDisallowed(f'{edge_id}_1', ['all'])
-                traci.lane.setAllowed(f'{edge_id}_1', ['bicycle'])
-                traci.lane.setDisallowed(f'{edge_id}_0', ['all'])
-                traci.lane.setAllowed(f'{edge_id}_0', ['pedestrian'])
-            else: 
-                traci.lane.setDisallowed(f'{edge_id}_0', ['all'])
-                allowed = []
-                allowed.append('bicycle')
-                allowed.append('pedestrian')        
-                traci.lane.setAllowed(f'{edge_id}_0', allowed)
-                traci.lane.setDisallowed(f'{edge_id}_1', ["all"])
+        if env.state_file not in env.generatedFiles:
+            env.generatedFiles.append(env.state_file)
