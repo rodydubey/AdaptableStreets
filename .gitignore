@@ -9,6 +9,8 @@ environment/newTrainFiles
 slurm*.out
 *.rou.xml
 .DS_Store
+events.out*
+savedstate*.xml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
