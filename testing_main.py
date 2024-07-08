@@ -33,11 +33,12 @@ mode = 'gui' if (use_gui and display) else 'none'
 
 USE_CUDA = False  # torch.cuda.is_available()
 
-# mode = 'gui'
+mode = 'gui'
 
 # EDGES = ['E0']
 # joint_agents = False
 # EDGES = ['E0','-E1','-E2','-E3']
+# EDGES = ['803424574#0','237645196#0','237790228#0','237645189#0','237910181#3']
 # joint_agents = True
 # generateFlowFiles("Test 0") 
 
@@ -93,8 +94,12 @@ def run(config):
     # testResultFilePath = f"results/debug_heuristic.csv"
     if len(EDGES)==4:
         testResultFilePath = f"results/{modeltype}_4way_{'joint_' if joint_agents else ''}{'surge' if surge else 'nosurge'}.csv"  
+    elif len(EDGES)==5:
+        testResultFilePath = f"results/{modeltype}_LTN_{'joint_' if joint_agents else ''}{'surge' if surge else 'nosurge'}_d{config.density}_{config.seed}_DS_AllEdges_RKDCode_5Seeds.csv" 
     else:
-        testResultFilePath = f"results/{modeltype}_damian_{'surge' if surge else 'nosurge'}_d{config.density}_{config.seed}.csv" 
+         testResultFilePath = f"results/{modeltype}_1way{'surge' if surge else 'nosurge'}_d{config.density}_{config.seed}.csv" 
+    if mode=='gui':
+        testResultFilePath = "dummy.csv" 
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
         written_headers = False
@@ -114,7 +119,11 @@ def run(config):
                                                 ep_i + 1 + config.n_rollout_threads,
                                                 config.n_episodes))
                 # print("time of hour:", env.envs[0].timeOfHour, env.envs[0]._routeFileName, env.envs[0]._scenario)
-                obs = env.reset()
+                if not env.firstTimeFlag:
+                    env.reset()
+                    env.warmup()
+                else:
+                    obs = env.reset()
                 assert 'Test' in env._scenario
                 step = 0
                 # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
@@ -146,18 +155,26 @@ def run(config):
                     total_reward += rewards[0]
 
                     # rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
+                    if len(EDGES)==5:
+                        #Measure stats for all edges
+                        for edge_agent in env._allEdges:
+                            headers, values = edge_agent.getTestStats()
+                            if not written_headers:
+                                writer.writerow(headers + ['timeslot', 'seed'])
+                                written_headers = True
+                            writer.writerow(values + [ep_i, seed])
+                    else:
+                        for edge_agent in env.edge_agents:
+                            headers, values = edge_agent.getTestStats()
+                            if not written_headers:
+                                writer.writerow(headers + ['timeslot', 'seed'])
+                                written_headers = True
+                            writer.writerow(values + [ep_i, seed])
+                        # (edge_id, carFlowRate, bikeFlowRate, pedFlowRate, carLaneWidth, bikeLaneWidth, pedlLaneWidth, cosharing, total_mean_speed_car, total_mean_speed_bike, total_mean_speed_ped, total_waiting_car_count, total_waiting_bike_count, total_waiting_ped_count, total_unique_car_count, total_unique_bike_count, total_unique_ped_count,
+                        #     car_occupancy, bike_occupancy, ped_occupancy, collision_count_bike, collision_count_ped, total_density_bike_lane, total_density_ped_lane, total_density_car_lane, Hinderance_bb, Hinderance_bp, Hinderance_pp, levelOfService) = edge_agent.testAnalysisStats()
 
-                    for edge_agent in env.edge_agents:
-                        headers, values = edge_agent.getTestStats()
-                        if not written_headers:
-                            writer.writerow(headers + ['timeslot', 'seed'])
-                            written_headers = True
-                        writer.writerow(values + [ep_i, seed])
-                    # (edge_id, carFlowRate, bikeFlowRate, pedFlowRate, carLaneWidth, bikeLaneWidth, pedlLaneWidth, cosharing, total_mean_speed_car, total_mean_speed_bike, total_mean_speed_ped, total_waiting_car_count, total_waiting_bike_count, total_waiting_ped_count, total_unique_car_count, total_unique_bike_count, total_unique_ped_count,
-                    #     car_occupancy, bike_occupancy, ped_occupancy, collision_count_bike, collision_count_ped, total_density_bike_lane, total_density_ped_lane, total_density_car_lane, Hinderance_bb, Hinderance_bp, Hinderance_pp, levelOfService) = edge_agent.testAnalysisStats()
-
-                    # rewardAgent_2 = 0
-                        # writer.writerow([avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,reward_agent_2,cosharing,ep_i])
+                        # rewardAgent_2 = 0
+                            # writer.writerow([avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,reward_agent_2,cosharing,ep_i])
 
                 total_reward /= step
                 # show reward
@@ -193,7 +210,7 @@ if __name__ == '__main__':
     parser.add_argument("--model_id", default="/model.pt", type=str)
     parser.add_argument("--model_name", default="simple_model", type=str)
     parser.add_argument("--seed",
-                        default=42, type=int,
+                        default=3, type=int,
                         help="Random seed")
     parser.add_argument("--n_rollout_threads", default=1, type=int)
     parser.add_argument("--n_training_threads", default=6, type=int)
@@ -219,11 +236,12 @@ if __name__ == '__main__':
     parser.add_argument("--adversary_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])
-    parser.add_argument("--modeltype", default='model', type=str,
+    parser.add_argument("--modeltype", default='static', type=str,
                          choices=['model', 'heuristic','static'])
-    parser.add_argument("--edges", default="E0", type=str)
+    parser.add_argument("--edges", default="803424574#0,237645196#0,237790228#0,237645189#0,237910181#3", type=str)
+    # parser.add_argument("--edges", default="E0", type=str)
     parser.add_argument("--joint_agents", action='store_true')
-    parser.add_argument("--load_state", action='store_true')
+    parser.add_argument("--load_state", default=True, type=bool)
 
     config = parser.parse_args()
 

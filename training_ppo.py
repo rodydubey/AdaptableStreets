@@ -16,27 +16,13 @@ from matplotlib import pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
 
-# from stable_baselines3.common.results_plotter import load_results, ts2xy
-# from stable_baselines3.common.utils import set_random_seed
-# from stable_baselines3.common.callbacks import BaseCallback
-# from stable_baselines3.common.vec_env import VecMonitor
-
-
-# can be online, offline, or disabled
-use_wandb = os.environ.get('WANDB_MODE', 'online')
-wandb_run = wandb.init(
-    project=f"AdaptableLanesRevisionTRC{'PPO_'.lower()}",
-    tags=["PPO_Final?", "RL"],
-    mode=use_wandb,
-    sync_tensorboard=True
-)
 
 
 class SUMOEnvPPO(SUMOEnv):
     def __init__(self, reset_callback=None, reward_callback=None, observation_callback=None, info_callback=None, done_callback=None, shared_viewer=True, mode='gui', 
-                 edges=..., simulation_end=36000, joint_agents=False, episode_length=20):
+                 edges=..., simulation_end=36000, joint_agents=False, episode_length=20, **kwargs):
         super().__init__(reset_callback, reward_callback, observation_callback, info_callback,
-                         done_callback, shared_viewer, mode, edges, simulation_end, joint_agents)
+                         done_callback, shared_viewer, mode, edges, simulation_end, joint_agents, **kwargs)
         self.action_space = gym.spaces.MultiDiscrete([5, 9, 2])
         # observation space
         self.observation_space = gym.spaces.Box(
@@ -103,18 +89,6 @@ class SUMOEnvPPO(SUMOEnv):
         done_n = self._episode_length_counter >= self.episode_length
         return obs_n, reward_n, done_n, info_n
 
-
-EDGES = ['E0']
-generateFlowFiles("Train", edges=EDGES)
-joint_agents = False
-mode = 'none'
-env_kwargs = {'mode': mode,
-              'edges': EDGES,
-              'joint_agents': joint_agents}
-
-log_dir = "logs"
-if not os.path.exists(log_dir):
-    os.makedirs(log_dir)
 
 
 def run(model, config):
@@ -190,13 +164,35 @@ if __name__ == '__main__':
                         action='store_true')
 
     config = parser.parse_args()
+
+
+    EDGES = ['E0']
+    generateFlowFiles("Train", edges=EDGES)
+    joint_agents = False
+    mode = 'none'
+    env_kwargs = {'mode': mode,
+                'edges': EDGES,
+                'joint_agents': joint_agents}
+
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    # can be online, offline, or disabled
+    use_wandb = os.environ.get('WANDB_MODE', 'online')
+    wandb_run = wandb.init(
+        project=f"AdaptableLanesRevisionTRC{'PPO_'.lower()}",
+        tags=["PPO_Final?", "RL"],
+        mode=use_wandb,
+        sync_tensorboard=True
+    )
+
     env_kwargs['episode_length'] = config.episode_length
 
-    env = make_vec_env(SUMOEnvPPO, n_envs=1,
+    env = make_vec_env(SUMOEnvPPO, n_envs=4,
                        seed=config.seed, env_kwargs=env_kwargs)
     env.env_method('set_run_mode', 'Train')
-
-    new_logger = configure(log_dir, ["stdout", "csv", "tensorboard"])
+    
+    # new_logger = configure(log_dir, ["stdout", "csv", "tensorboard"])
     # check_env(env, warn=True)
     print(env.action_space)
     print(env.action_space.sample())
@@ -204,6 +200,7 @@ if __name__ == '__main__':
     # env.reset()
     model = PPO("MlpPolicy", env, n_steps=20, verbose=1,
                 tensorboard_log=f'logs/{wandb_run.id}', device='cpu', seed=config.seed)
-    model.set_logger(new_logger)
+    # model.set_logger(new_logger)
+    # print(f'logs/{wandb_run.id}')
     run(model, config)
     wandb_run.finish()

@@ -66,10 +66,10 @@ class CustomVecEnv(DummyVecEnv):
             self._save_obs(env_idx, obs)
         return (self._obs_from_buf(), np.copy(self.buf_rews), np.copy(self.buf_dones), deepcopy(self.buf_infos))
 
-def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_agents=False):
+def make_parallel_env(env_id, n_rollout_threads, seed, discrete_action, joint_agents=False, load_state=False):
     def get_env_fn(rank):
         def init_env():
-            env = SUMOEnv(mode=mode, edges=EDGES, joint_agents=joint_agents)
+            env = SUMOEnv(mode=mode, edges=EDGES, joint_agents=joint_agents, load_state=load_state)
             env.seed(seed + rank * 1000)
             np.random.seed(seed + rank * 1000)
             # env.sumo_seed = seed + rank * 1000
@@ -96,7 +96,7 @@ def run(config, wandb_run):
         torch.set_num_threads(config.n_training_threads)
 
     env = make_parallel_env(config.env_id, config.n_rollout_threads, config.seed,
-                            config.discrete_action, joint_agents=joint_agents)
+                            config.discrete_action, joint_agents=joint_agents, load_state=config.load_state)
     print(env.action_space)
     print(env.observation_space)
     
@@ -127,6 +127,7 @@ def run(config, wandb_run):
                                             ep_i + 1 + config.n_rollout_threads,
                                             config.n_episodes))
             obs = env.reset()
+            print('first time flag', env.get_attr('firstTimeFlag'))
             step = 0
             # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
             maddpg.prep_rollouts(device='cpu')
@@ -247,7 +248,7 @@ if __name__ == '__main__':
     parser.add_argument("--batch_size",
                         default=1024, type=int,
                         help="Batch size for model training")
-    parser.add_argument("--n_exploration_eps", default=25000, type=int)
+    parser.add_argument("--n_exploration_eps", default=500, type=int)
     parser.add_argument("--init_noise_scale", default=0.3, type=float)
     parser.add_argument("--final_noise_scale", default=0.0, type=float)
     parser.add_argument("--save_interval", default=30, type=int)
@@ -262,6 +263,7 @@ if __name__ == '__main__':
                         choices=['MADDPG', 'DDPG'])
     parser.add_argument("--discrete_action",
                         action='store_true')
+    parser.add_argument("--load_state", action='store_true')
 
     config = parser.parse_args()
 

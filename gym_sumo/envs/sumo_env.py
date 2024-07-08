@@ -258,6 +258,28 @@ class EdgeAgent:
         self._levelOfService = 0 
         
     def collectObservation(self):
+        
+        if self.edge_id not in self.env.edges: # observations for rest of network
+            veh_queue_Count = 0
+            veh_waiting_time = 0
+            numberLanes = self.traci.edge.getLaneNumber(self.edge_id)
+            for n in range(numberLanes):
+                lane_id = f'{self.edge_id}_{n}'
+                veh_queue_Count += self.env.getLaneQueueLength(lane_id)
+                veh_waiting_time += self.env.get_waiting_time_lane(lane_id)
+            
+            self._queue_Count_car += veh_queue_Count/numberLanes
+            self._total_waiting_time_car += veh_waiting_time/numberLanes
+
+            self._total_waiting_time_bike += np.nan
+            self._total_waiting_time_ped += np.nan
+
+
+            self._queue_Count_ped += np.nan
+            self._queue_Count_bike += np.nan
+            return
+
+        # proceed for main edges
         laneWidthCar = self.traci.lane.getWidth(f'{self.edge_id}_2')
         laneWidthBike = self.traci.lane.getWidth(f'{self.edge_id}_1')
         laneWidthPed = self.traci.lane.getWidth(f'{self.edge_id}_0')
@@ -476,17 +498,35 @@ class EdgeAgent:
         else:
             cosharing = False
 
-        laneWidth = self.traci.lane.getWidth(f'{self.edge_id}_2')#/12.6
-        bikeLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_1')#/12.6
-        pedLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_0')#/12.6
-        headers = ['avg_waiting_time_car', 'avg_waiting_time_bike', 'avg_waiting_time_ped',
-                   'avg_queue_count_car', 'avg_queue_count_bike', 'avg_queue_count_ped',
-                   'car_lane_width', 'bike_lane_width', 'ped_lane_width',
-                   'los', "Reward_Agent_2", "cosharing", 'edge_id','safety','teleport']
-        values = [avg_waiting_time_car, avg_waiting_time_bike, avg_waiting_time_ped,
-                  avg_queue_count_car, avg_queue_count_bike, avg_queue_count_ped,
-                  laneWidth, bikeLaneWidth, pedLaneWidth,
-                  los, self.reward_agent_2, cosharing, self.edge_id,safety,teleport]
+       
+        if len(self.env.edges)==5:
+            headers = ['avg_waiting_time_car', 'avg_waiting_time_bike', 'avg_waiting_time_ped',
+                    'avg_queue_count_car', 'avg_queue_count_bike', 'avg_queue_count_ped','edge_id']
+            values = [avg_waiting_time_car, avg_waiting_time_bike, avg_waiting_time_ped,
+                    avg_queue_count_car, avg_queue_count_bike, avg_queue_count_ped,self.edge_id]
+        else:
+            laneWidth = self.traci.lane.getWidth(f'{self.edge_id}_2')#/12.6
+            bikeLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_1')#/12.6
+            pedLaneWidth = self.traci.lane.getWidth(f'{self.edge_id}_0')#/12.6
+
+            if len(self.env.edges)!=1:
+                headers = ['avg_waiting_time_car', 'avg_waiting_time_bike', 'avg_waiting_time_ped',
+                        'avg_queue_count_car', 'avg_queue_count_bike', 'avg_queue_count_ped',
+                        'car_lane_width', 'bike_lane_width', 'ped_lane_width',
+                        'los', "Reward_Agent_2", "cosharing", 'edge_id','safety','teleport']
+                values = [avg_waiting_time_car, avg_waiting_time_bike, avg_waiting_time_ped,
+                        avg_queue_count_car, avg_queue_count_bike, avg_queue_count_ped,
+                        laneWidth, bikeLaneWidth, pedLaneWidth,
+                        los, self.reward_agent_2, cosharing, self.edge_id,safety,teleport]
+            else:
+                headers = ['avg_waiting_time_car', 'avg_waiting_time_bike', 'avg_waiting_time_ped',
+                        'avg_queue_count_car', 'avg_queue_count_bike', 'avg_queue_count_ped',
+                        'car_lane_width', 'bike_lane_width', 'ped_lane_width',
+                        'los', "Reward_Agent_2", "cosharing", 'ped_safety_counter','bike_safety_counter','veh_safety_counter','edge_id','safety','teleport']
+                values = [avg_waiting_time_car, avg_waiting_time_bike, avg_waiting_time_ped,
+                        avg_queue_count_car, avg_queue_count_bike, avg_queue_count_ped,
+                        laneWidth, bikeLaneWidth, pedLaneWidth,
+                        los, self.reward_agent_2, cosharing, self.env.pedSafetyCounter,self.env.bikeSafetyCounter,self.env.vehSafetyCounter,self.edge_id,safety,teleport]
         return headers, values
 
 
@@ -632,6 +672,7 @@ class SUMOEnv(gym.Env):
         np.random.seed(42)
         self.sumo_seed = np.random.randint(69142)
         self.counter = 2
+        self.edges = edges
         self.withGUI = mode=='gui'
         self.traci = self.initSimulator(self.withGUI, self.pid)
         self._sumo_step = 0
@@ -645,8 +686,12 @@ class SUMOEnv(gym.Env):
         # self._gamma = 0.75
         self._slotId = 1
         self.timeOfHour = 1
-        self.base_netfile = "environment/intersection.net.xml"
-        self._routeFileName = "environment/intersection_Slot_1.rou.xml" # default name 
+        if len(self.edges)==5:
+            self.base_netfile = "environment/Barcelona/Barcelona.net.xml"
+            self._routeFileName = "environment/Barcelona/Barcelona.rou.xml" # default name 
+        else:
+            self.base_netfile = "environment/intersection.net.xml"
+            self._routeFileName = "environment/intersection_Slot_1.rou.xml" # default name 
         self._max_steps = 24000
         self._slot_duration = 1200
         self._max_slots = 3
@@ -680,11 +725,15 @@ class SUMOEnv(gym.Env):
 
         # self._scenario = "Train"
         # set required vectorized gym env property
-        self.edges = edges
+        
+        self._allEdgeNetwork = self.traci.edge.getIDList()
+        self._allEdges = [EdgeAgent(self, edge_id) for edge_id in self._allEdgeNetwork if edge_id not in self.edges] # excludes self.edges
         self._num_lane_agents = 3
         
         # configure spaces
         self.edge_agents = [EdgeAgent(self, edge_id) for edge_id in self.edges]
+        self._allEdges += self.edge_agents
+
         if self.joint_agents:
             num_agent_factor = len(self.edge_agents)
         else:
@@ -751,6 +800,13 @@ class SUMOEnv(gym.Env):
                 agent_actions.append(index)
         return agent_actions
 
+    def get_waiting_time_lane(self,laneID):
+        vehicles = self.traci.lane.getLastStepVehicleIDs(laneID)
+        wait_time = 0
+        for vehID in vehicles:
+            wait_time += self.traci.vehicle.getWaitingTime(vehID)
+        return wait_time
+
     def get_waiting_times(self, edgeID):
         counters = {'bicycle': {'count': 0, 'wait': 0},
                     'passenger': {'count': 0, 'wait': 0},
@@ -800,8 +856,13 @@ class SUMOEnv(gym.Env):
     def reset(self, *args):		
         self._sumo_step = 0
         # self._scenario = "Train"
-        for edge_agent in self.edge_agents:
+        if len(self.edges)==5:
+            temp_agents = self._allEdges
+        else:
+            temp_agents = self.edge_agents
+        for edge_agent in temp_agents:
             edge_agent.resetAllVariables()
+
         if self._scenario=="Train":
             self._slotId = np.random.randint(1,120)
             #Adapt Route File for continous change
@@ -824,7 +885,10 @@ class SUMOEnv(gym.Env):
                 self._routeFileName = f"barcelona_test/single/{folder}/intersection_Slot_{self._slotId}.rou.xml"
             elif len(self.edges)==4:
                 print("Testing 4wayflow")
-                self._routeFileName = f"barcelona_test/4way/{folder}/intersection_Slot_{self._slotId}.rou.xml"
+                self._routeFileName = f"barcelona_test/4way/{folder}/intersection_Slot_{self._slotId}.rou.xml"            
+            elif len(self.edges)==5:
+                print("Testing Large Traffic Network")
+                self._routeFileName = f"environment/Barcelona/intersection_Slot_{self._slotId}.rou.xml" 
             self.timeOfHour +=1
         elif self._scenario=="Test Single Flow":
             self.timeOfHour = 1
@@ -841,22 +905,29 @@ class SUMOEnv(gym.Env):
         
         obs_n = {}
         # self.traci.load(['-n', 'environment/intersection.net.xml', '-r', self._routeFileName, "--start"]) # should we keep the previous vehicle
+        if len(self.edges)==5:
+            netfile =  'environment/Barcelona/Barcelona.net.xml'
+        else:
+            netfile = 'environment/intersection.net.xml'
         if self.firstTimeFlag:
-            self.traci.load(self.sumoCMD + ['-n', 'environment/intersection.net.xml', '-r', self._routeFileName])
+            self.traci.load(self.sumoCMD + ['-n', netfile, '-r', self._routeFileName])
             # if self._scenario=="Train":
-            while self._sumo_step <= self.action_steps:
+            while self._sumo_step <= self.action_steps: # THIS IS A WARMUP
                 self.traci.simulationStep() 		# Take a simulation step to initialize
                 self.collectObservation()
                 self._sumo_step +=1
-            if self.modeltype != 'static' and self.load_state:
+            if self.load_state and self._scenario!="Train":
                 self.firstTimeFlag = False
         else:
-            modified_netfile = f'environment/intersection2_{self.pid}.net.xml'
-            self.traci.load(self.sumoCMD + ['-n', modified_netfile, '-r', self._routeFileName])
+            print("loading last action")
+            if self.modeltype != 'static':
+                netfile = f'environment/intersection2_{self.pid}.net.xml'
+                if netfile not in self.generatedFiles:
+                    self.generatedFiles.append(netfile)
+            
+            self.traci.load(self.sumoCMD + ['-n', netfile, '-r', self._routeFileName])
             # if self.load_state:
-            #     self.traci.simulation.loadState(self.state_file)
-
-        
+            #     self.traci.simulation.loadState(self.state_file)        
         
         
                 
@@ -879,6 +950,15 @@ class SUMOEnv(gym.Env):
 
     # def _observation(self,agent):
     # 	return self.getState(agent)
+    def getLaneQueueLength(self,laneID):
+        allVehicles = self.traci.lane.getLastStepVehicleIDs(laneID)
+        queueCount = 0
+        if len(allVehicles) > 1:
+                for veh in allVehicles:
+                    speed = self.traci.vehicle.getSpeed(veh)
+                    if speed < 0.1:
+                        queueCount += 1
+        return queueCount
 
     def getAllQueueLengths(self, edgeID):
         allVehicles = self.traci.edge.getLastStepVehicleIDs(edgeID)
@@ -984,10 +1064,6 @@ class SUMOEnv(gym.Env):
         reward = agent.getReward()
         return reward
 
-            
-    def _seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def _get_done(self, agent):  
         return agent.done
@@ -1052,8 +1128,14 @@ class SUMOEnv(gym.Env):
     #     return carCollisionCounter,bikeCollisionCounter,pedCollisionCounter
     
     def collectObservation(self):
-        for edge_agent in self.edge_agents:
-            edge_agent.collectObservation()
+        if len(self.edges)==5:
+            #Measure stats for all edges
+            for edge_agent in self._allEdges:
+                edge_agent.collectObservation()        
+        else:
+            for edge_agent in self.edge_agents:
+                edge_agent.collectObservation()
+
 
 
     def step(self,action_n):
@@ -1102,13 +1184,23 @@ class SUMOEnv(gym.Env):
                 self.warmup()
         if self._scenario in ["Train", "Test", "Test Single Flow"]:
             #reset all variables
-            for edge_agent in self.edge_agents:
-                edge_agent.resetAllVariables()
-                laneVehicleAllowedType = self.traci.lane.getAllowed(f'{edge_agent.edge_id}_0')
-                if 'bicycle' in laneVehicleAllowedType:
-                    edge_agent.cosharing = True
-                else:
-                    edge_agent.cosharing = False
+            if len(self.edges)==5:
+                for edge_agent in self._allEdges:
+                    edge_agent.resetAllVariables()
+                    laneVehicleAllowedType = self.traci.lane.getAllowed(f'{edge_agent.edge_id}_0')
+                    if 'bicycle' in laneVehicleAllowedType:
+                        edge_agent.cosharing = True
+                    else:
+                        edge_agent.cosharing = False
+            else:
+                for edge_agent in self.edge_agents:
+                    edge_agent.resetAllVariables()
+                    laneVehicleAllowedType = self.traci.lane.getAllowed(f'{edge_agent.edge_id}_0')
+                    if 'bicycle' in laneVehicleAllowedType:
+                        edge_agent.cosharing = True
+                    else:
+                        edge_agent.cosharing = False
+
             while self._sumo_step <= self.action_steps:
                 # advance world state
                 self.traci.simulationStep()
@@ -1299,7 +1391,7 @@ class SUMOEnv(gym.Env):
         return self._carQueueLength, self._bikeQueueLength, self._pedQueueLength
 
     def initSimulator(self,withGUI,portnum):
-        if withGUI:
+        if self.withGUI:
             import traci
         else:
             try:
@@ -1322,7 +1414,7 @@ class SUMOEnv(gym.Env):
         #                 "--pedestrian.striping.dawdling","0.5","--collision.check-junctions", "--collision.mingap-factor","0","--collision.action", "warn",
         #                 '--seed', f"{self.sumo_seed}", "-W","--default.carfollowmodel", "IDM","--no-step-log"]
 
-        if withGUI:
+        if self.withGUI:
             sumoBinary = checkBinary('sumo-gui')
             # self.sumoCMD += ["--start", "--quit-on-end"]
         else:
@@ -1330,8 +1422,12 @@ class SUMOEnv(gym.Env):
 
         # sumoConfig = "gym_sumo/envs/sumo_configs/intersection.sumocfg"
         # self.sumoCMD = ["-c", sumoConfig] + self.sumoCMD
-        sumoStartArgs = ['-n', 'environment/intersection.net.xml', 
-                           '-r', 'gym_sumo/envs/sumo_configs/intersection.rou.xml']
+        if len(self.edges)==5:
+            sumoStartArgs = ['-n', 'environment/Barcelona/Barcelona.net.xml', 
+                        '-r', 'environment/Barcelona/Barcelona.rou.xml']
+        else:
+            sumoStartArgs = ['-n', 'environment/intersection.net.xml', 
+                            '-r', 'gym_sumo/envs/sumo_configs/intersection.rou.xml']
 
         # Initialize the simulation
         traci.start([sumoBinary] + self.sumoCMD + sumoStartArgs)
@@ -1339,17 +1435,21 @@ class SUMOEnv(gym.Env):
 
     @property
     def sumoCMD(self):
-        sumocmd = ["--time-to-teleport.disconnected",str(1),"--ignore-route-errors",
-                        "--pedestrian.striping.dawdling","0.5","--collision.check-junctions", "--collision.mingap-factor","0","--collision.action", "warn",
-                        "--seed", f"{self.sumo_seed}", "-W","--default.carfollowmodel", "IDM","--no-step-log"]
+        sumocmd = ["--time-to-teleport.disconnected",str(5), "--ignore-route-errors","--collision.mingap-factor","0",
+                        "--pedestrian.striping.dawdling","0.5","--collision.check-junctions","--collision.action", "warn",
+                        "--seed", f"{self.sumo_seed}", "-W","--default.carfollowmodel", "IDM","--no-step-log", "--save-state.transportables"]
         if self.withGUI:
             sumocmd += ["--start", "--quit-on-end"]
-        sumoConfig = "gym_sumo/envs/sumo_configs/intersection.sumocfg"
+        if len(self.edges)==5:
+            sumoConfig = "environment/Barcelona/Barcelona.sumocfg"
+        else:
+            sumoConfig = "gym_sumo/envs/sumo_configs/intersection.sumocfg"
         sumocmd = ["-c", sumoConfig] + sumocmd
         return sumocmd
     
     def seed(self, seed):
         self.sumo_seed = seed
+        np.random.random(seed)
         return super().seed(seed)
 
 
@@ -1367,8 +1467,6 @@ class SUMOEnv(gym.Env):
     def warmup(self):
         # self._sumo_step = 0
         self.traci.simulationStep(300)
-            # self.collectObservation()
-            # self._sumo_step +=1
         self._sumo_step = 0
         # for edge_agent in self.edge_agents:
         #     edge_agent.resetAllVariables()

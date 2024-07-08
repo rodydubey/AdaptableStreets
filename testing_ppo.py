@@ -26,7 +26,6 @@ from algorithms.maddpg import MADDPG
 
 import numpy as np
 import sys
-sys.path.append('C:/D/SUMO/MARL/multiagentRL/')
 warnings.filterwarnings('ignore')
 
 display = 'DISPLAY' in os.environ
@@ -36,21 +35,20 @@ mode = 'gui' if (use_gui and display) else 'none'
 USE_CUDA = False  # torch.cuda.is_available()
 
 # mode = 'gui'
+
 EDGES = ['E0']
 joint_agents = False
 # EDGES = ['E0','-E1','-E2','-E3']
 # joint_agents = True
 # generateFlowFiles("Test 0")
 env_kwargs = {'mode': mode,
-              'edges': EDGES,
-              'joint_agents': joint_agents}
-# generateFlowFiles("Test 0")
-# env = SUMOEnv(**env_kwargs)
+            'edges': EDGES,
+            'joint_agents': joint_agents,
+            'load_state': True}
 
 from training_ppo import SUMOEnvPPO
 env = SUMOEnvPPO(**env_kwargs)
 
-# env = make_vec_env(SUMOEnvPPO, n_envs=1, env_kwargs=env_kwargs)
 # check_env(env, warn=True)
 # env.env_method('set_run_mode', 'Test')
 
@@ -64,7 +62,7 @@ model = PPO("MlpPolicy", env, n_steps=6, verbose=1)
 def run(config):
     model_dir = Path('./models') / config.env_id / config.model_name
     # run_id = 'run225'
-    run_id = f'ppo_{config.density}'
+    run_id = f'ppo_{config.density}_{config.seed}'
     run_dir = model_dir / run_id
     model.load(run_dir / 'model.pt')
     t = 0
@@ -74,9 +72,9 @@ def run(config):
     num_seeds = config.num_seeds
     run_mode = 'Test'
     surge = True
-    env.set_run_mode('Test', surge=surge)
+    env.set_run_mode(run_mode, surge=surge)
 
-    testResultFilePath = f"results/PPO_test_{'surge' if surge else 'nosurge'}_{run_id}.csv"
+    testResultFilePath = f"results/ppo_1way_{'surge' if surge else 'nosurge'}_{run_id}.csv"
     with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
         written_headers = False
@@ -87,25 +85,24 @@ def run(config):
         for seed in seed_list: # realizations for averaging
             env.seed(seed)
             env.timeOfHour = 1 # hack
-            # env.modeltype = modeltype # hack
+            env.modeltype = "model" # hack
             # env.firstTimeFlag = True
 
-            # env.envs[0].set_sumo_seed(seed)
-            # env.set_attr('timeOfHour', 1)  # hack
-            # env.envs[0].firstTimeFlag = True
             for ep_i in tqdm(range(0, config.n_episodes)):
                 total_reward = 0
                 print("Episodes %i-%i of %i" % (ep_i + 1,
                                                 ep_i + 1 + config.n_rollout_threads,
                                                 config.n_episodes), env.timeOfHour)
-
-                obs = env.reset()
+                if not env.firstTimeFlag:
+                    env.reset()
+                    env.warmup()
+                else:
+                    obs = env.reset()
                 step = 0
                 for et_i in range(config.episode_length):
-                    print("Step {}".format(step))
                     step += 1
                     action, _ = model.predict(obs, deterministic=True)
-                    print("Action: ", action)
+
                     next_obs, reward, done, info = env.step(action)
                     obs = next_obs
                     total_reward += reward
@@ -124,11 +121,7 @@ def run(config):
                 smoothed_total_reward = smoothed_total_reward * 0.9 + total_reward * 0.1
                 scores.append(smoothed_total_reward)
                 # print('obs=', obs, 'reward=', reward, 'done=', done)
-    plt.plot(scores)
-    plt.xlabel('episodes')
-    plt.ylabel('ave rewards')
-    plt.savefig('avgScore.jpg')
-    plt.show()
+        env.close()
     # model.save(run_dir / 'model.pt')
 
 
@@ -157,7 +150,7 @@ if __name__ == '__main__':
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--tau", default=0.01, type=float)
     parser.add_argument("--density", default=4.87, type=float)
-    parser.add_argument("--num_seeds", default=5, type=int)
+    parser.add_argument("--num_seeds", default=10, type=int)
     parser.add_argument("--agent_alg",
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])
@@ -165,6 +158,7 @@ if __name__ == '__main__':
                         default="MADDPG", type=str,
                         choices=['MADDPG', 'DDPG'])
     parser.add_argument("--modeltype", default='model', type=str)
+    parser.add_argument("--load_state", default=True, type=bool)
 
     config = parser.parse_args()
 
