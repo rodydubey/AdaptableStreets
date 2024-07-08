@@ -11,7 +11,6 @@ baselineCarLaneWidth = 9.6
 baselinebicycleLaneWidth = 1.5
 baselinePedestrianLaneWidth = 1.5
 totalEdgeWidth = baselineCarLaneWidth + baselinebicycleLaneWidth + baselinePedestrianLaneWidth
-# carLane_width_actions = ['3.2','5.4','6.6','7.8','9.6']
 carLane_width_actions = ['3.2','5.6','6.4','7.8','9.6']
 bikeLane_width_actions = ['0.1','0.2','0.3','0.4','0.5','0.6','0.7','0.8','0.9']
 netconvert = checkBinary("netconvert")
@@ -115,17 +114,17 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
                     coShare = 1  
                 props['coShare'] = coShare
             edge_props[edge_id] = props
-            if len(sumo_edges)!=5: # NOTE: CHECK IF CAUSES PROBLEMS, HACK FOR BARCELONA
-                from_tos = {'E0': 'E2',
-                            '-E1': 'E3',
-                            '-E2': '-E0',
-                            '-E3': 'E1'}
-            else:
+            if len(sumo_edges)==5: # NOTE: CHECK IF CAUSES PROBLEMS, HACK FOR BARCELONA
                 from_tos = {'803424574#0': '237645185#0',
                             '237645196#0': '525638416#0',
                             '237790228#0': '237790228#3',
                             '237645189#0': '803424599#1',
                             '237910181#3': '544248640#2'}       
+            else:
+                from_tos = {'E0': 'E2',
+                            '-E1': 'E3',
+                            '-E2': '-E0',
+                            '-E3': 'E1'}
             edge_props[from_tos[edge_id]] = props # also set properties of downstream
 
         for edge_id, props in edge_props.items():
@@ -171,29 +170,18 @@ def adaptNetwork(env, sumo_edges, base_network,actionDict,modelType,routeFileNam
         env.bikeSafetyCounter = 0
         env.vehSafetyCounter = 0
 
-    # call netconvert            
-    # netconvert = checkBinary("netconvert")
 
     # save state
     if env.load_state:
         env.state_file = f'environment/savedstate_{pid}.xml'
         traci.simulation.clearPending()
-        traci.simulation.saveState(env.state_file) 
-    # load traci simulation   
-    # traci.load(['-n', "environment\intersection2.net.xml","--start"])
+        traci.simulation.saveState(env.state_file)
+
+    # load traci simulation to apply changes
     currentTime = (env.timeOfHour-1)*6*300 # TODO: fix hardcoded
-
-    # traci.load(sumoCMD + ['-n', 'environment/intersection2.net.xml', '-r', routeFileName, '--additional-files',"environment/intersection2.add.xml"])
     additional_args = ['-n', modified_netfile, '-r', routeFileName]
-
-    # if env._scenario == "Test Single Flow":
-    #     additional_args += ['-b', str(currentTime)]
     traci.load(sumoCMD + additional_args)
    
-
-    # traci.load(['-n', 'environment/intersection2.net.xml', '-r', routeFileName, "--start"]) # should we keep the previous vehic
-    # if env._scenario == "Test Single Flow":
-    #     traci.simulationStep(currentTime)
     # load last saved state
     if env.load_state:
         traci.simulation.loadState(env.state_file)
