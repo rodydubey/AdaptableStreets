@@ -1,7 +1,7 @@
 <routes xmlns:ns0="http://www.w3.org/30001/XMLSchema-instance" ns0:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
     
-    <vType id="ped" vClass="pedestrian" width="0.65"/>
-    <vType id="bike" vClass="bicycle" width="0.75"/>
+    <vType id="ped" vClass="pedestrian" width="0.65" latAlignment="right"/>
+    <vType id="bike" vClass="bicycle" width="0.75" latAlignment="center"/>
 
     <flow id="E0_f_0" type="ped" begin="0.00" color="magenta" from="E0" to="E2" vehsPerHour="1200" />
     <flow id="E0_f_1" type="bike" begin="0.00" color="blue" from="E0" to="E2" vehsPerHour="1200" />
