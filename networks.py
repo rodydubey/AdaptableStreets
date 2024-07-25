@@ -5,7 +5,8 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras.initializers import random_uniform
 import sys
 from config import *
-
+tf.random.set_seed(42)
+tf.keras.utils.set_random_seed(42)
 class Critic(tf.keras.Model):
     def __init__(self, name, hidden_0=CRITIC_HIDDEN_0, hidden_1=CRITIC_HIDDEN_1):
             

@@ -1,92 +1,248 @@
+import argparse
+import torch
+import time
+import os
+import numpy as np
+from gym.spaces import Box, Discrete
+from pathlib import Path
+from torch.autograd import Variable
+# from tensorboardX import SummaryWriter
+
+from utils.buffer import ReplayBuffer
+from algorithms.maddpg import MADDPG
+
 import numpy as np
 import sys
-sys.path.append('C:/D/SUMO/MARL/multiagentRL/')
 from gym_sumo.envs import SUMOEnv
 from matplotlib import pyplot as plt
 import warnings
 warnings.filterwarnings('ignore')
+import wandb
 from argparse import ArgumentParser
+import time
+import os
 from tqdm import tqdm
-
-from config import *
-from replay_buffer import *
-from networks import *
-from agent import *
-from super_agent import *
 import csv
+from gym_sumo.envs.utils import generateFlowFiles
+from gym_sumo.envs.utils import plot_scores
+from gym_sumo.envs.utils import print_status
 
-config = dict(
-  learning_rate_actor = ACTOR_LR,
-  learning_rate_critic = CRITIC_LR,
-  batch_size = BATCH_SIZE,
-  architecture = "MADDPG",
-  infra = "Colab",
-  env = ENV_NAME
-)
+display = 'DISPLAY' in os.environ
+use_gui = False
+mode = 'gui' if (use_gui and display) else 'none'
 
-# env = gym.make('SumoGUI-v0')
-env = SUMOEnv(mode='gui')
-print(env.action_space)
-print(env.observation_space)
-super_agent = SuperAgent(env)
+USE_CUDA = False  # torch.cuda.is_available()
 
-scores = []
-score_history = []
-cumm_test_score_list = []
-cumm_queue_length_car = []
-cumm_queue_length_bike = []
-cumm_queue_length_ped = [] 
-epsilon = 0
-evaluation = True
+mode = 'gui'
 
-if PATH_LOAD_FOLDER is not None:
-    print("loading weights")
-    actors_state = env.reset(True)
-    actors_action = super_agent.get_actions([actors_state[index][None, :] for index in range(super_agent.n_agents)],epsilon,evaluation)
-    [super_agent.agents[index].target_actor(actors_state[index][None, :]) for index in range(super_agent.n_agents)]
-    state = np.concatenate(actors_state)
-    actors_action = np.concatenate(actors_action)
-    [super_agent.agents[index].critic(state[None, :], actors_action[None, :]) for index in range(super_agent.n_agents)]
-    [super_agent.agents[index].target_critic(state[None, :], actors_action[None, :]) for index in range(super_agent.n_agents)]
-    super_agent.load()
+# EDGES = ['E0']
+# joint_agents = False
+# EDGES = ['E0','-E1','-E2','-E3']
+# EDGES = ['803424574#0','237645196#0','237790228#0','237645189#0','237910181#3']
+# joint_agents = True
+# generateFlowFiles("Test 0") 
 
-    print(super_agent.replay_buffer.buffer_counter)
-    print(super_agent.replay_buffer.n_games)
+def run(config):
+    EDGES = config.edges.split(',')
+    joint_agents = config.joint_agents
+    env_kwargs = {'mode': mode,
+                'edges': EDGES,
+                'joint_agents': joint_agents,
+                'load_state': config.load_state}
+    
 
-    with open('results.csv', 'w', newline='') as file:
+    model_dir = Path('./models') / config.env_id / config.model_name
+    curr_run = f'{config.run_id}_{config.density:.2f}{"_joint" if joint_agents else ""}_{config.seed}' + config.model_id 
+    # curr_run = f'{config.run_id}_{config.density}_{config.seed}' + config.model_id
+    run_dir = model_dir / curr_run
+    log_dir = run_dir / 'logs'
+
+    torch.manual_seed(config.seed)
+    np.random.seed(config.seed)
+    if not USE_CUDA:
+        torch.set_num_threads(config.n_training_threads)
+
+    # env = make_vec_env(SUMOEnv, n_envs=config.n_rollout_threads, seed=config.seed,
+    #                    env_kwargs=env_kwargs)
+    env = SUMOEnv(**env_kwargs)
+    # env = make_parallel_env(config.env_id, config.n_rollout_threads, config.seed,
+    #                         config.discrete_action, joint_agents=joint_agents)
+    print(env.action_space)
+    print(env.observation_space)
+
+    if joint_agents:
+        edge_agents = [MADDPG.init_from_save(run_dir)]
+    else:
+        edge_agents = [MADDPG.init_from_save(run_dir) for edge in env.edges]
+
+    t = 0
+    scores = []    
+    smoothed_total_reward = 0
+    pid = os.getpid()
+    start_seed = 42
+    num_seeds = config.num_seeds
+    # run_mode = 'Test Single Flow'
+    run_mode = 'Test'
+    surge = True
+    modeltype = config.modeltype#'model'
+
+    # [_env.set_run_mode(run_mode) for _env in env.envs]
+    env.set_run_mode(run_mode, surge=surge)
+
+    # testResultFilePath = f"results/debug.csv"  
+    # testResultFilePath = f"results/debug_static.csv"
+    # testResultFilePath = f"results/debug_heuristic.csv"
+    if len(EDGES)==4:
+        testResultFilePath = f"results/{modeltype}_4way_{'joint_' if joint_agents else ''}{'surge' if surge else 'nosurge'}.csv"  
+    elif len(EDGES)==5:
+        testResultFilePath = f"results/{modeltype}_LTN_{'joint_' if joint_agents else ''}{'surge' if surge else 'nosurge'}_d{config.density}_{config.seed}_DS_AllEdges_RKDCode_5Seeds.csv" 
+    else:
+         testResultFilePath = f"results/{modeltype}_1way{'surge' if surge else 'nosurge'}_d{config.density}_{config.seed}.csv" 
+    if mode=='gui':
+        testResultFilePath = "dummy.csv" 
+    with open(testResultFilePath, 'w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Cum_Car_Queue_Length','Cum_Bike_Queue_Length','Cum_Ped_Queue_Length'])
-        score = 0
-        # for n_game in tqdm(range(1)):
-            # if super_agent.replay_buffer.check_buffer_size():
-        done = [False for index in range(super_agent.n_agents)]
-        actors_state = env.reset(False)
-        step = 0
-        # while not any(done): 
-        for step in tqdm(range(50)):
-            actors_action = super_agent.get_actions([actors_state[index][None, :] for index in range(super_agent.n_agents)],epsilon,evaluation)
-            actors_next_state, reward, done, info = env.step(actors_action)
-            state = np.concatenate(actors_state)
-            next_state = np.concatenate(actors_next_state)
-            actors_state = actors_next_state        
-            score += sum(reward)
-            cumm_test_score_list.append(score)
-            print(score)
-            queue_length_car, queue_length_bike, queue_length_ped = env.QueueLength()
-            cumm_queue_length_car.append(queue_length_car)
-            cumm_queue_length_bike.append(queue_length_bike)
-            cumm_queue_length_ped.append(queue_length_ped)
-            writer.writerow([queue_length_car,queue_length_bike, queue_length_ped])
+        written_headers = False
 
-                    # step += 1
-                    # if step >= MAX_STEPS:
-                    #     break
-        # plt.plot(cumm_test_score_list)
-        # plt.show()
+        if num_seeds>1:
+            seed_list = list(range(start_seed,start_seed+num_seeds))
+        else:
+            seed_list = [start_seed]
+        for seed in seed_list: # realizations for averaging
+            env.seed(seed)
+            env.timeOfHour = 1 # hack
+            env.modeltype = modeltype # hack
+            
+            for ep_i in tqdm(range(0, config.n_episodes, config.n_rollout_threads)):
+                total_reward = 0
+                print("Episodes %i-%i of %i" % (ep_i + 1,
+                                                ep_i + 1 + config.n_rollout_threads,
+                                                config.n_episodes))
+                # print("time of hour:", env.envs[0].timeOfHour, env.envs[0]._routeFileName, env.envs[0]._scenario)
+                if not env.firstTimeFlag:
+                    env.reset()
+                    env.warmup()
+                else:
+                    obs = env.reset()
+                assert 'Test' in env._scenario
+                step = 0
+                # obs.shape = (n_rollout_threads, nagent)(nobs), nobs differs per agent so not tensor
+                for maddpg in edge_agents:
+                    maddpg.prep_rollouts(device='cpu')
+                # explr_pct_remaining = max(0, config.n_exploration_eps - ep_i) / config.n_exploration_eps
+                # maddpg.scale_noise(config.final_noise_scale + (config.init_noise_scale - config.final_noise_scale) * explr_pct_remaining)
+                # maddpg.reset_noise()
+            
+                for et_i in range(config.episode_length):
+                    step += 1
+                    torch_obs = [Variable(torch.Tensor(np.vstack(obs[agent.name]).T),
+                                        requires_grad=False)
+                                for agent in env.agents]# in range(maddpg.nagents*len(env.edges))]
+                    # get actions as torch Variables
+                    torch_agent_actions = []
+                    if joint_agents:
+                        torch_agent_actions += maddpg.step(torch_obs, explore=False)
+                    else:
+                        for i, maddpg in enumerate(edge_agents):
+                            torch_agent_actions += maddpg.step(torch_obs[i*3:i*3+3], explore=False)
+                    # convert actions to numpy arrays
+                    agent_actions = [ac.data.numpy() for ac in torch_agent_actions]
+                    # rearrange actions to be per environment
+                    actions = simplify_actions([ac[0] for ac in agent_actions])
+                    next_obs, rewards, dones, infos = env.step(actions)
+                    obs = next_obs
+                    t += config.n_rollout_threads
+                    total_reward += rewards[0]
+
+                    # rewardAgent_0, rewardAgent_1,rewardAgent_2 = env.rewardAnalysisStats()
+                    if len(EDGES)==5:
+                        #Measure stats for all edges
+                        for edge_agent in env._allEdges:
+                            headers, values = edge_agent.getTestStats()
+                            if not written_headers:
+                                writer.writerow(headers + ['timeslot', 'seed'])
+                                written_headers = True
+                            writer.writerow(values + [ep_i, seed])
+                    else:
+                        for edge_agent in env.edge_agents:
+                            headers, values = edge_agent.getTestStats()
+                            if not written_headers:
+                                writer.writerow(headers + ['timeslot', 'seed'])
+                                written_headers = True
+                            writer.writerow(values + [ep_i, seed])
+                        # (edge_id, carFlowRate, bikeFlowRate, pedFlowRate, carLaneWidth, bikeLaneWidth, pedlLaneWidth, cosharing, total_mean_speed_car, total_mean_speed_bike, total_mean_speed_ped, total_waiting_car_count, total_waiting_bike_count, total_waiting_ped_count, total_unique_car_count, total_unique_bike_count, total_unique_ped_count,
+                        #     car_occupancy, bike_occupancy, ped_occupancy, collision_count_bike, collision_count_ped, total_density_bike_lane, total_density_ped_lane, total_density_car_lane, Hinderance_bb, Hinderance_bp, Hinderance_pp, levelOfService) = edge_agent.testAnalysisStats()
+
+                        # rewardAgent_2 = 0
+                            # writer.writerow([avg_waiting_time_car,avg_waiting_time_bike,avg_waiting_time_ped,avg_queue_length_car,avg_queue_length_bike,avg_queue_length_ped,los,reward_agent_2,cosharing,ep_i])
+
+                total_reward /= step
+                # show reward
+                smoothed_total_reward = smoothed_total_reward * 0.9 + total_reward * 0.1
+                scores.append(smoothed_total_reward)
+                # env.envs[0].nextTimeSlot()
         
-        #Plot Cummulative Queue Length for each vehicle type
-        plt.plot(cumm_queue_length_car)
-        plt.show()
+        env.close()
+      
+    # plt.plot(scores)
+    # plt.xlabel('episodes')
+    # plt.ylabel('ave rewards')
+    # plt.savefig('avgScore.jpg')
+    # plt.show()
+        # logger.export_scalars_to_json(str(log_dir / 'summary.json'))
+        # logger.close()
 
-else:
-    print("No model loaded")
+def simplify_actions(actions):
+    agent_actions = []
+    for action in actions:
+        if isinstance(action, list):
+            agent_actions.append(simplify_actions(action))
+        else:
+            agent_actions.append(np.argmax(action))
+    return agent_actions
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env_id", default="simple", type=str)
+    # parser.add_argument("--run_id", default="run241", type=str) # run47 is performing the best on training data
+    parser.add_argument("--run_id", default="maddpg", type=str) # run47 is performing the best on training data
+    # parser.add_argument("--run_id", default="maddpg_4.87_joint", type=str) # run47 is performing the best on training data
+    parser.add_argument("--model_id", default="/model.pt", type=str)
+    parser.add_argument("--model_name", default="simple_model", type=str)
+    parser.add_argument("--seed",
+                        default=3, type=int,
+                        help="Random seed")
+    parser.add_argument("--n_rollout_threads", default=1, type=int)
+    parser.add_argument("--n_training_threads", default=6, type=int)
+    parser.add_argument("--buffer_length", default=int(1e6), type=int)
+    parser.add_argument("--n_episodes", default=48, type=int)
+    parser.add_argument("--episode_length", default=6, type=int)
+    parser.add_argument("--steps_per_update", default=10, type=int)
+    parser.add_argument("--batch_size",
+                        default=1024, type=int,
+                        help="Batch size for model training")
+    parser.add_argument("--n_exploration_eps", default=25000, type=int)
+    parser.add_argument("--init_noise_scale", default=0.3, type=float)
+    parser.add_argument("--final_noise_scale", default=0.0, type=float)
+    parser.add_argument("--save_interval", default=30, type=int)
+    parser.add_argument("--hidden_dim", default=64, type=int)
+    parser.add_argument("--lr", default=0.01, type=float)
+    parser.add_argument("--tau", default=0.01, type=float)
+    parser.add_argument("--density", default=4.87, type=float)
+    parser.add_argument("--num_seeds", default=5, type=int)
+    parser.add_argument("--agent_alg",
+                        default="MADDPG", type=str,
+                        choices=['MADDPG', 'DDPG'])
+    parser.add_argument("--adversary_alg",
+                        default="MADDPG", type=str,
+                        choices=['MADDPG', 'DDPG'])
+    parser.add_argument("--modeltype", default='static', type=str,
+                         choices=['model', 'heuristic','static'])
+    parser.add_argument("--edges", default="803424574#0,237645196#0,237790228#0,237645189#0,237910181#3", type=str)
+    # parser.add_argument("--edges", default="E0", type=str)
+    parser.add_argument("--joint_agents", action='store_true')
+    parser.add_argument("--load_state", default=True, type=bool)
+
+    config = parser.parse_args()
+
+    run(config) 

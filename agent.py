@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import optimizers as opt
-import random
 import time
 import json
 import os
@@ -10,8 +9,9 @@ import copy
 from config import *
 from replay_buffer import *
 from networks import *
+from utilss import get_space_dims
 
-
+np.random.seed(42)
 THETA=0.15
 DT=1e-1
 def clamp(n, minn, maxn):
@@ -39,16 +39,20 @@ class OUNoise:
         return self.state
 
 class Agent:
-    def __init__(self, env, n_agent, actor_lr=ACTOR_LR, critic_lr=CRITIC_LR, gamma=GAMMA, tau=TAU):
+    def __init__(self, env, n_agent, actor_lr=ACTOR_LR, critic_lr=CRITIC_LR, 
+                 gamma=GAMMA, tau=TAU, noise_sigma=0.15):
         
         self.gamma = gamma
         self.tau = tau
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
+        self.noise_sigma = noise_sigma
+
+        self.actor_dims = get_space_dims(env.observation_space[n_agent])
+        self.n_actions = get_space_dims(env.action_space[n_agent])
         
-        self.actor_dims = env.observation_space[n_agent].shape[0]
-        self.n_actions = env.action_space[n_agent].shape[0] #for discreet action it was .n
-        
+        self.id = n_agent
+        self.name = f'agent {self.id}'
         self.agent_name = "agent_number_{}".format(n_agent)
         
         self.actor = Actor("actor_" + self.agent_name, self.n_actions)
@@ -88,17 +92,19 @@ class Agent:
         # noise = tf.random.uniform(shape=[self.n_actions])
         # ou_noise = OUNoise(1)
         # noise = ou_noise.sample()
-        normal_scalar = 0.15
-        noise = np.random.randn(1) * normal_scalar
+        normal_scalar = self.noise_sigma
+        noise_uniform = np.random.randn(self.n_actions) * normal_scalar
         actions = self.actor(actor_states)
         # print(actions)
         if not evaluation:
-            if random.random() < epsilon: # Decide whether to perform an explorative or exploitative action, according to an epsilon-greedy policy during non-evaluation phase
-                actions = actions + noise
+            if np.random.random() < epsilon: # Decide whether to perform an explorative or exploitative action, according to an epsilon-greedy policy during non-evaluation phase
+                actions = actions + noise_uniform
             else:
                 print("exploitation")
-        # ou_noise.reset()        
-        actions = clamp(actions.numpy()[0],0.1,0.9)
+        # ou_noise.reset() 
+        # actions = actions + noise_uniform         
+        actions = np.clip(actions.numpy()[0],0.1,0.9)
+        print(self.agent_name,actions)
         return actions
     
     def save(self, path_save):

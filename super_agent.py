@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import optimizers as opt
-import random
 import time
 import json
 import os
@@ -17,7 +16,9 @@ class SuperAgent:
         self.replay_buffer = ReplayBuffer(env)
         self.n_agents = len(env.agents)
         self.agents = [Agent(env, agent) for agent in range(self.n_agents)]
-        
+        date_now = time.strftime("%Y%m%d%H%M")
+        self.full_path = f"{self.path_save}/save_agent_{date_now}_{env.pid}"
+
     def get_actions(self, agents_states,epsilon,evaluation):
         list_actions = [self.agents[index].get_actions(agents_states[index],epsilon,evaluation) for index in range(self.n_agents)]
         # list_actions = []
@@ -30,8 +31,7 @@ class SuperAgent:
         return list_actions
     
     def save(self):
-        date_now = time.strftime("%Y%m%d%H%M")
-        full_path = f"{self.path_save}/save_agent_{date_now}"
+        full_path = self.full_path
         if not os.path.isdir(full_path):
             os.makedirs(full_path)
         
@@ -46,6 +46,16 @@ class SuperAgent:
             agent.load(full_path)
             
         self.replay_buffer.load(full_path)
+
+    # def printCriticValues(self,states,actions):
+    #     aaa = [a.reshape(1,1) for a in actions]
+    #     aa = tf.concat(aaa,axis=1)
+    #     ss = tf.convert_to_tensor(states)
+    #     print(self.agents[0].target_critic(tf.reshape(ss,(1,-1)),tf.reshape(aa,(1,-1))))
+    #     print(self.agents[1].target_critic(tf.reshape(ss,(1,-1)),tf.reshape(aa,(1,-1))))
+    #     print(self.agents[2].target_critic(tf.reshape(ss,(1,-1)),tf.reshape(aa,(1,-1))))
+
+
     
     def train(self):
         if self.replay_buffer.check_buffer_size() == False:
@@ -70,13 +80,16 @@ class SuperAgent:
             concat_actors_action = tf.concat(actors_actions, axis=1)
             
             target_critic_values = [tf.squeeze(self.agents[index].target_critic(next_states, concat_target_actions), 1) for index in range(self.n_agents)]
+            # print(target_critic_values)
             critic_values = [tf.squeeze(self.agents[index].critic(states, concat_actors_action), 1) for index in range(self.n_agents)]
             targets = [rewards[:, index] + self.agents[index].gamma * target_critic_values[index] * (1-done[:, index]) for index in range(self.n_agents)]
             critic_losses = [tf.keras.losses.MSE(targets[index], critic_values[index]) for index in range(self.n_agents)]
             
             actor_losses = [-self.agents[index].critic(states, concat_policy_actions) for index in range(self.n_agents)]
+            # print('L1', actor_losses)
             actor_losses = [tf.math.reduce_mean(actor_losses[index]) for index in range(self.n_agents)]
-        
+            # print('L2', actor_losses)
+
         critic_gradients = [tape.gradient(critic_losses[index], self.agents[index].critic.trainable_variables) for index in range(self.n_agents)]
         actor_gradients = [tape.gradient(actor_losses[index], self.agents[index].actor.trainable_variables) for index in range(self.n_agents)]
         
@@ -84,3 +97,5 @@ class SuperAgent:
             self.agents[index].critic.optimizer.apply_gradients(zip(critic_gradients[index], self.agents[index].critic.trainable_variables))
             self.agents[index].actor.optimizer.apply_gradients(zip(actor_gradients[index], self.agents[index].actor.trainable_variables))
             self.agents[index].update_target_networks(self.agents[index].tau)
+
+        return actor_losses, critic_losses
