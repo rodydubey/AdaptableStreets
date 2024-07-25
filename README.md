@@ -1,12 +1,5 @@
-# AdapatableStreets
-## This repository hosts the code for the paper "Cooperative Adaptable Lanes for Safer Shared Space and Improved Mixed-Traffic Flow"
-
-
-SUMO and traci version - 1.15.0
-Tensorflow - 2.11.0
-Gym -  0.2.1
-Python - 3.9.7
-
+# AdaptableStreets
+## This repository hosts the code for the paper "Cooperative adaptable lanes for safer shared space and improved mixed-traffic flow" - accepted in Transportation Research Part C
 
 ## Running on Euler
 
