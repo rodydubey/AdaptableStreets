@@ -1,4 +1,6 @@
 # AdapatableStreets
+## This repository hosts the code for the paper "Cooperative Adaptable Lanes for Safer Shared Space and Improved Mixed-Traffic Flow"
+
 
 SUMO and traci version - 1.15.0
 Tensorflow - 2.11.0
