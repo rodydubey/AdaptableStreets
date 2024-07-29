@@ -1,5 +1,21 @@
 # AdaptableStreets
-## This repository hosts the code for the paper "Cooperative adaptable lanes for safer shared space and improved mixed-traffic flow" - accepted in Transportation Research Part C
+This repository hosts the code for the paper *"Cooperative adaptable lanes for safer shared space and improved mixed-traffic flow"*.
+
+## Citing
+If you found any part of this repository useful for your work, please cite our paper:
+```
+@article{Dubey2024,
+  title = {Cooperative adaptable lanes for safer shared space and improved mixed-traffic flow},
+  volume = {166},
+  DOI = {10.1016/j.trc.2024.104748},
+  journal = {Transportation Research Part C: Emerging Technologies},
+  publisher = {Elsevier BV},
+  author = {Dubey,  Rohit K. and Argota Sánchez–Vaquerizo,  Javier and Dailisan,  Damian and Helbing,  Dirk},
+  year = {2024},
+  month = sep,
+  pages = {104748}
+}
+```
 
 ## Running on Euler
 
